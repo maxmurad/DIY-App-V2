@@ -218,6 +218,54 @@ IMPORTANT:
         # Fallback error handling
         if "404" in str(e):
              raise HTTPException(status_code=404, detail=f"AI Model not found or not compatible. {str(e)}")
+        
+async def analyze_repair_with_upload(content_part: types.Part, description: str) -> Dict:
+    """Analyze repair using a file part (video or image)"""
+    try:
+        if not client_genai:
+             raise ValueError("Google GenAI client not initialized.")
+
+        system_context = """You are an expert DIY home repair consultant.
+Analyze the provided video or image to give detailed, actionable repair guidance.
+If provided a video, pay attention to sound and movement to diagnose the issue."""
+
+        analysis_prompt = f"""{system_context}
+
+User description: {description}
+
+Analyze this media for a DIY home repair assessment.
+Provide a comprehensive analysis in JSON format matching this schema:
+{{
+  "title": "Title",
+  "hardware_identified": "Hardware",
+  "issue_type": "Issue",
+  "description": "Description",
+  "skill_level": 1-4,
+  "estimated_time": "Time",
+  "safety_warnings": ["Warning"],
+  "steps": [{{ "step_number": 1, "title": "Step", "description": "Desc", "warning": "Warn", "image_hint": "Hint" }}],
+  "materials": [{{ "name": "Mat", "estimated_cost": "Cost" }}],
+  "tools": [{{ "name": "Tool", "estimated_cost": "Cost" }}]
+}}
+RETURN ONLY RAW JSON.
+"""
+        response = client_genai.models.generate_content(
+            model='gemini-3-flash-preview',
+            contents=[analysis_prompt, content_part],
+            config=types.GenerateContentConfig(temperature=0.2)
+        )
+        
+        response_text = response.text.strip()
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+            
+        return json.loads(response_text)
+    except Exception as e:
+        logger.error(f"AI analysis upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+
         raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 # ============ API Routes ============
