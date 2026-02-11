@@ -16,6 +16,7 @@ export default function CameraScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [processing, setProcessing] = useState(false); // New state for image processing
   const cameraRef = useRef<any>(null);
   const router = useRouter();
 
@@ -30,6 +31,7 @@ export default function CameraScreen() {
 
   const processImage = async (uri: string) => {
     try {
+      setProcessing(true); // Start processing indicator
       const result = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: 1024 } }], // Resize to max width 1024px
@@ -39,6 +41,8 @@ export default function CameraScreen() {
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;
+    } finally {
+      setProcessing(false); // Stop processing indicator
     }
   };
 
@@ -65,14 +69,13 @@ export default function CameraScreen() {
   }
 
   const takePicture = async () => {
-    if (cameraRef.current) {
+    if (cameraRef.current && !processing && !analyzing) { // Prevent double clicks
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.7, // Initial capture quality
-          base64: false, // We'll generate base64 after resizing
+          quality: 0.7, 
+          base64: false, 
         });
         
-        // Process and compress image
         if (photo.uri) {
             const processedBase64 = await processImage(photo.uri);
             setCapturedImage(processedBase64);
@@ -80,18 +83,21 @@ export default function CameraScreen() {
       } catch (error) {
         console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
+        setProcessing(false);
       }
     }
   };
 
   const pickImage = async () => {
+    if (processing || analyzing) return; // Prevent interaction while busy
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
-        base64: false, // We'll generate base64 after resizing
+        base64: false, 
       });
 
       if (!result.canceled && result.assets[0].uri) {
@@ -101,6 +107,7 @@ export default function CameraScreen() {
     } catch (error) {
       console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image');
+      setProcessing(false);
     }
   };
 
@@ -130,10 +137,8 @@ export default function CameraScreen() {
       );
 
       if (response.data && response.data.project) {
-        // Save project ID for later access
         await AsyncStorage.setItem('lastProjectId', response.data.project.id);
         
-        // Navigate to diagnosis screen with project data
         router.push({
           pathname: '/diagnosis',
           params: { projectId: response.data.project.id }
@@ -157,6 +162,16 @@ export default function CameraScreen() {
     setCapturedImage(null);
     setDescription('');
   };
+
+  // Show processing overlay if working on image
+  if (processing) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#10b981" />
+        <Text style={{color: 'white', marginTop: 20}}>Processing image...</Text>
+      </View>
+    );
+  }
 
   if (capturedImage) {
     return (
@@ -231,11 +246,19 @@ export default function CameraScreen() {
           </View>
 
           <View style={styles.bottomBar}>
-            <TouchableOpacity style={styles.galleryButton} onPress={pickImage}>
+            <TouchableOpacity 
+                style={styles.galleryButton} 
+                onPress={pickImage}
+                disabled={processing || analyzing} // Disable while busy
+            >
               <MaterialIcons name="photo-library" size={32} color="#fff" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+            <TouchableOpacity 
+                style={styles.captureButton} 
+                onPress={takePicture}
+                disabled={processing || analyzing}
+            >
               <View style={styles.captureButtonInner} />
             </TouchableOpacity>
 
@@ -251,6 +274,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   permissionContainer: {
     flex: 1,
@@ -279,6 +304,7 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+    width: '100%',
   },
   cameraOverlay: {
     flex: 1,
@@ -332,6 +358,7 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     flex: 1,
+    width: '100%',
   },
   previewContentWrapper: {
     flex: 1,
