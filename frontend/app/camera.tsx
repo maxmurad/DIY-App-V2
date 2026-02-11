@@ -233,19 +233,26 @@ export default function CameraScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <GestureDetector gesture={pinchGesture}>
-        <CameraView 
-          style={styles.camera} 
-          ref={cameraRef} 
-          facing="back"
-          zoom={zoom}
-        >
-          <View style={styles.cameraOverlay}>
+      <View style={styles.contentContainer}>
+        {/* Layer 1: Camera & Gestures */}
+        <GestureDetector gesture={pinchGesture}>
+            <View style={styles.cameraContainer}>
+                <CameraView 
+                  style={styles.camera} 
+                  ref={cameraRef} 
+                  facing="back"
+                  zoom={zoom}
+                />
+            </View>
+        </GestureDetector>
+
+        {/* Layer 2: UI Overlay */}
+        <View style={styles.overlayContainer} pointerEvents="box-none">
             <View style={styles.topBar}>
               <Text style={styles.instructionText}>Pinch to Zoom ({Math.round(zoom * 100)}%)</Text>
             </View>
 
-            <View style={styles.bottomBar}>
+            <View style={styles.bottomBar} pointerEvents="auto">
               <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={processing || analyzing}>
                 <MaterialIcons name="photo-library" size={32} color="#fff" />
               </TouchableOpacity>
@@ -256,9 +263,8 @@ export default function CameraScreen() {
 
               <View style={styles.placeholderButton} />
             </View>
-          </View>
-        </CameraView>
-      </GestureDetector>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -267,8 +273,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center'
+  },
+  contentContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  cameraContainer: {
+    flex: 1,
+    width: '100%',
+  },
+  camera: {
+    flex: 1,
+    width: '100%',
+  },
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    zIndex: 10, // Ensure it's above the camera
   },
   permissionContainer: {
     flex: 1,
@@ -294,14 +315,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  camera: {
-    flex: 1,
-    width: '100%',
-  },
-  cameraOverlay: {
-    flex: 1,
-    justifyContent: 'space-between',
   },
   topBar: {
     backgroundColor: 'rgba(0,0,0,0.5)',
