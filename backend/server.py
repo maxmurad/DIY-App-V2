@@ -192,7 +192,7 @@ IMPORTANT:
         # Let's use the standard method.
         
         response = client_genai.models.generate_content(
-            model='gemini-2.0-flash', # Using 2.0-flash as 2.5 is not yet standard in this SDK version or might be 404. Sticking to reliable modern model. User asked for 2.5 but 2.0-flash is the current stable "next-gen". If user insists on 2.5 we can try strings.
+            model='gemini-3-flash-preview', # User requested gemini-3-flash-preview
             contents=[analysis_prompt, image],
             config=types.GenerateContentConfig(
                 temperature=0.2,
