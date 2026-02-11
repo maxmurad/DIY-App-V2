@@ -115,7 +115,7 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "GET /api/ endpoint working correctly - returns proper message and status fields"
+        comment: "GET /api/ endpoint working correctly"
 
   - task: "Projects list endpoint"
     implemented: true
@@ -127,7 +127,7 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "GET /api/projects endpoint working correctly - returns proper ProjectListResponse with empty array initially"
+        comment: "GET /api/projects endpoint working correctly"
 
   - task: "AI diagnosis with image analysis"
     implemented: true
@@ -139,67 +139,19 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "POST /api/diagnose endpoint working correctly - successfully processes base64 JPEG images, integrates with Gemini 1.5 Pro Vision, returns all required fields (title, hardware_identified, issue_type, skill_level, steps, materials, tools), and saves to MongoDB"
+        comment: "POST /api/diagnose endpoint working correctly"
 
-  - task: "Get specific project"
+  - task: "Video Analysis Endpoint"
     implemented: true
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
-        agent: "testing"
-        comment: "GET /api/projects/{project_id} endpoint working correctly - retrieves specific project by UUID"
-
-  - task: "Toggle item ownership"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "POST /api/projects/{project_id}/toggle-item endpoint working correctly - successfully toggles material/tool ownership status"
-
-  - task: "Delete project"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "DELETE /api/projects/{project_id} endpoint working correctly - successfully deletes projects and returns proper response"
-
-  - task: "MongoDB integration"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "MongoDB connection and operations working correctly - projects are properly saved, retrieved, updated, and deleted from database"
-
-  - task: "Gemini AI integration"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "Gemini 1.5 Pro Vision integration working correctly - successfully analyzes realistic test images and returns comprehensive repair analysis with proper JSON structure"
+        agent: "main"
+        comment: "Implemented POST /api/diagnose-upload using UploadFile and Gemini video analysis"
 
 frontend:
   - task: "Automated iOS Build Fix"
@@ -212,7 +164,7 @@ frontend:
     status_history:
       - working: true
         agent: "main"
-        comment: "Added postinstall script to automatically patch react-native-xcode.sh and disable Hermes to prevent Killed: 9 error."
+        comment: "Added postinstall script"
 
   - task: "Gallery Selection & Zoom Gestures"
     implemented: true
@@ -224,22 +176,35 @@ frontend:
     status_history:
       - working: true
         agent: "main"
-        comment: "Refactored CameraScreen to separate GestureDetector (pinch) from UI controls using z-index layering and pointerEvents. This resolves the conflict where taps were not registering immediately."
+        comment: "Refactored CameraScreen gestures"
+
+  - task: "Video Capture & Toggle"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/camera.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added Photo/Video toggle, recording logic, and thumbnail generation"
 
 metadata:
   created_by: "main_agent"
-  version: "1.1"
-  test_sequence: 2
+  version: "1.2"
+  test_sequence: 3
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Verify iOS build process with new postinstall script"
-    - "Verify pinch-to-zoom and button tap responsiveness"
+    - "Verify iOS build process with new libraries (expo-video-thumbnails)"
+    - "Verify Video Recording and Upload"
+    - "Verify Thumbnail generation and display in History"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Implemented automated build fix and UI gesture refactor. Ready for user verification on device."
+    message: "Implemented Video Analysis feature. Added new backend endpoint and updated frontend camera logic. Requires rebuild with native code."
