@@ -91,10 +91,16 @@ export default function HistoryScreen() {
         params: { projectId: item.id }
       })}
     >
-      <Image
-        source={{ uri: item.thumbnail_base64 || (item.image_base64 ? `data:image/jpeg;base64,${item.image_base64}` : undefined) }}
-        style={styles.projectImage}
-      />
+      {item.thumbnail_base64 || item.image_base64 ? (
+        <Image
+          source={{ uri: item.thumbnail_base64 || (item.image_base64 ? `data:image/jpeg;base64,${item.image_base64}` : undefined) }}
+          style={styles.projectImage}
+        />
+      ) : (
+        <View style={[styles.projectImage, { justifyContent: 'center', alignItems: 'center' }]}>
+           <MaterialIcons name="image-not-supported" size={32} color="#9ca3af" />
+        </View>
+      )}
       <View style={styles.projectContent}>
         <Text style={styles.projectTitle} numberOfLines={2}>
           {item.title}
