@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, CameraMode } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -15,27 +16,25 @@ const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null); // Stores URI of image or video thumbnail
+  const [capturedVideo, setCapturedVideo] = useState<string | null>(null); // Stores URI of video
   const [description, setDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [zoom, setZoom] = useState(0); // Zoom state: 0 to 1
-  const cameraRef = useRef<any>(null);
+  const [zoom, setZoom] = useState(0); 
+  const [mode, setMode] = useState<CameraMode>('picture');
+  const [isRecording, setIsRecording] = useState(false);
+  
+  const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
 
   // Gesture for Pinch to Zoom
   const pinchGesture = Gesture.Pinch()
     .onUpdate((e) => {
-      // Calculate new zoom based on pinch scale
-      // velocity is speed of pinch, scale is the multiplier
-      // We add a small fraction of the velocity to current zoom
       const velocity = e.velocity / 20; 
       let newZoom = zoom + (velocity * 0.05);
-      
-      // Clamp between 0 and 1
       if (newZoom < 0) newZoom = 0;
       if (newZoom > 1) newZoom = 1;
-      
       runOnJS(setZoom)(newZoom);
     });
 
@@ -56,12 +55,29 @@ export default function CameraScreen() {
         [{ resize: { width: 1024 } }],
         { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
-      return `data:image/jpeg;base64,${result.base64}`;
+      return result;
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const generateThumbnail = async (videoUri: string) => {
+    try {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(
+        videoUri,
+        {
+          time: 1000,
+        }
+      );
+      // Process thumbnail to be consistent with image uploads (resize, compress)
+      const processed = await processImage(uri);
+      return processed; 
+    } catch (e) {
+      console.warn("Could not generate thumbnail", e);
+      return null;
     }
   };
 
@@ -95,9 +111,10 @@ export default function CameraScreen() {
           base64: false, 
         });
         
-        if (photo.uri) {
-            const processedBase64 = await processImage(photo.uri);
-            setCapturedImage(processedBase64);
+        if (photo?.uri) {
+            const processed = await processImage(photo.uri);
+            setCapturedImage(`data:image/jpeg;base64,${processed.base64}`);
+            setCapturedVideo(null);
         }
       } catch (error) {
         console.error('Error taking picture:', error);
@@ -107,12 +124,43 @@ export default function CameraScreen() {
     }
   };
 
+  const recordVideo = async () => {
+      if (cameraRef.current && !isRecording && !processing) {
+          try {
+              setIsRecording(true);
+              const video = await cameraRef.current.recordAsync({
+                  maxDuration: 5,
+                  quality: '480p', // Keep size small for upload
+                  mute: false
+              });
+              
+              if (video?.uri) {
+                  setProcessing(true);
+                  const thumbnail = await generateThumbnail(video.uri);
+                  if (thumbnail) {
+                      setCapturedImage(`data:image/jpeg;base64,${thumbnail.base64}`);
+                  }
+                  setCapturedVideo(video.uri);
+                  setProcessing(false);
+              }
+              setIsRecording(false); // Ensure state reset
+          } catch (error) {
+              console.error('Error recording video:', error);
+              setIsRecording(false);
+              setProcessing(false);
+          }
+      } else if (isRecording) {
+          cameraRef.current?.stopRecording();
+          setIsRecording(false);
+      }
+  };
+
   const pickImage = async () => {
     if (processing || analyzing) return;
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow videos too
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
@@ -120,72 +168,126 @@ export default function CameraScreen() {
       });
 
       if (!result.canceled && result.assets[0].uri) {
-        const processedBase64 = await processImage(result.assets[0].uri);
-        setCapturedImage(processedBase64);
+        const asset = result.assets[0];
+        setProcessing(true);
+        
+        if (asset.type === 'video') {
+             const thumbnail = await generateThumbnail(asset.uri);
+             if (thumbnail) {
+                setCapturedImage(`data:image/jpeg;base64,${thumbnail.base64}`);
+             }
+             setCapturedVideo(asset.uri);
+        } else {
+             const processed = await processImage(asset.uri);
+             setCapturedImage(`data:image/jpeg;base64,${processed.base64}`);
+             setCapturedVideo(null);
+        }
+        setProcessing(false);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      console.error('Error picking media:', error);
+      Alert.alert('Error', 'Failed to pick media');
       setProcessing(false);
     }
   };
 
-  const analyzeImage = async () => {
-    if (!capturedImage) {
-      Alert.alert('No Image', 'Please capture or upload an image first');
-      return;
-    }
+  const uploadAndAnalyze = async () => {
+      if (!capturedImage && !capturedVideo) return;
+      
+      setAnalyzing(true);
+      try {
+          const formData = new FormData();
+          
+          if (capturedVideo) {
+              const videoUri = capturedVideo;
+              const filename = videoUri.split('/').pop() || 'video.mp4';
+              const match = /\.(\w+)$/.exec(filename);
+              const type = match ? `video/${match[1]}` : `video/mp4`;
+              
+              // @ts-ignore: FormData expects specific object structure for React Native
+              formData.append('file', { uri: videoUri, name: filename, type });
+              formData.append('thumbnail_base64', capturedImage || ""); 
+          } else if (capturedImage) {
+              // Convert base64 back to file? Or upload bytes?
+              // Currently backend diagnose-upload expects a file.
+              // We can rely on the old diagnose endpoint? No, let's unify.
+              // Actually, we have the original processed base64. 
+              // We can create a dummy file from it? No.
+              // We should use the existing diagnose endpoint for Images if we want to save bandwidth, 
+              // OR implement base64 handling in diagnose-upload.
+              // BUT, `diagnose-upload` expects `file: UploadFile`.
+              // So for Images, we should probably stick to `diagnose` (JSON) endpoint unless we want to upload the file.
+              // Let's split logic.
+          }
+          
+          formData.append('description', description);
 
-    setAnalyzing(true);
-    try {
-      const base64Data = capturedImage.split(',')[1];
+          let response;
+          if (capturedVideo) {
+               response = await axios.post(
+                  `${EXPO_PUBLIC_BACKEND_URL}/api/diagnose-upload`,
+                  formData,
+                  {
+                      headers: {
+                          'Content-Type': 'multipart/form-data',
+                      },
+                      timeout: 180000, // 3 mins for video
+                  }
+              );
+          } else {
+               // Photo flow - keep using JSON endpoint for speed/compatibility
+               // Need to strip prefix
+               const base64Data = capturedImage!.split(',')[1];
+               response = await axios.post(
+                  `${EXPO_PUBLIC_BACKEND_URL}/api/diagnose`,
+                  {
+                      image_base64: base64Data,
+                      description: description || undefined,
+                  },
+                  {
+                      headers: { 'Content-Type': 'application/json' },
+                      timeout: 120000, 
+                  }
+              );
+          }
 
-      const response = await axios.post(
-        `${EXPO_PUBLIC_BACKEND_URL}/api/diagnose`,
-        {
-          image_base64: base64Data,
-          description: description || undefined,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 120000, 
-        }
-      );
+          if (response.data && response.data.project) {
+            await AsyncStorage.setItem('lastProjectId', response.data.project.id);
+            router.push({
+              pathname: '/diagnosis',
+              params: { projectId: response.data.project.id }
+            });
+          }
 
-      if (response.data && response.data.project) {
-        await AsyncStorage.setItem('lastProjectId', response.data.project.id);
-        
-        router.push({
-          pathname: '/diagnosis',
-          params: { projectId: response.data.project.id }
-        });
+      } catch (error: any) {
+          console.error('Analysis error:', error);
+          let errorMessage = 'Failed to analyze. Please try again.';
+          if (error.response?.data?.detail) {
+            errorMessage = error.response.data.detail;
+          } else if (error.message) {
+            errorMessage = error.message;
+          }
+          Alert.alert('Analysis Failed', errorMessage);
+      } finally {
+          setAnalyzing(false);
       }
-    } catch (error: any) {
-      console.error('Analysis error:', error);
-      let errorMessage = 'Failed to analyze image. Please try again.';
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      Alert.alert('Analysis Failed', errorMessage);
-    } finally {
-      setAnalyzing(false);
-    }
   };
 
   const retake = () => {
     setCapturedImage(null);
+    setCapturedVideo(null);
     setDescription('');
   };
+  
+  const toggleMode = () => {
+      setMode(mode === 'picture' ? 'video' : 'picture');
+  }
 
   if (processing) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#10b981" />
-        <Text style={{color: 'white', marginTop: 20}}>Processing image...</Text>
+        <Text style={{color: 'white', marginTop: 20}}>Processing...</Text>
       </View>
     );
   }
@@ -200,11 +302,16 @@ export default function CameraScreen() {
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.previewContentWrapper}>
               <Image source={{ uri: capturedImage }} style={styles.previewImage} />
+              {capturedVideo && (
+                  <View style={styles.videoBadge}>
+                      <MaterialIcons name="videocam" size={24} color="white" />
+                  </View>
+              )}
               <View style={styles.previewOverlay}>
                 <Text style={styles.previewTitle}>Add Description (Optional)</Text>
                 <TextInput
                   style={styles.descriptionInput}
-                  placeholder="Describe the issue (e.g., 'leaking faucet', 'cracked wall')..."
+                  placeholder="Describe the issue (e.g., 'leaking faucet')..."
                   placeholderTextColor="#9ca3af"
                   value={description}
                   onChangeText={setDescription}
@@ -219,7 +326,7 @@ export default function CameraScreen() {
                     <MaterialIcons name="refresh" size={24} color="#ef4444" />
                     <Text style={styles.retakeButtonText}>Retake</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionButton, styles.analyzeButton]} onPress={() => { Keyboard.dismiss(); analyzeImage(); }} disabled={analyzing}>
+                  <TouchableOpacity style={[styles.actionButton, styles.analyzeButton]} onPress={() => { Keyboard.dismiss(); uploadAndAnalyze(); }} disabled={analyzing}>
                     {analyzing ? <ActivityIndicator color="#fff" /> : <><MaterialIcons name="auto-fix-high" size={24} color="#fff" /><Text style={styles.analyzeButtonText}>Analyze</Text></>}
                   </TouchableOpacity>
                 </View>
@@ -234,7 +341,6 @@ export default function CameraScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.contentContainer}>
-        {/* Layer 1: Camera & Gestures */}
         <GestureDetector gesture={pinchGesture}>
             <View style={styles.cameraContainer}>
                 <CameraView 
@@ -242,24 +348,44 @@ export default function CameraScreen() {
                   ref={cameraRef} 
                   facing="back"
                   zoom={zoom}
+                  mode={mode}
                 />
             </View>
         </GestureDetector>
 
-        {/* Layer 2: UI Overlay */}
         <View style={styles.overlayContainer} pointerEvents="box-none">
             <View style={styles.topBar}>
-              <Text style={styles.instructionText}>Pinch to Zoom ({Math.round(zoom * 100)}%)</Text>
+               <View style={styles.modeSwitchContainer}>
+                  <TouchableOpacity onPress={() => setMode('picture')} style={[styles.modeButton, mode === 'picture' && styles.activeModeButton]}>
+                      <Text style={[styles.modeText, mode === 'picture' && styles.activeModeText]}>Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setMode('video')} style={[styles.modeButton, mode === 'video' && styles.activeModeButton]}>
+                      <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
+                  </TouchableOpacity>
+               </View>
             </View>
 
             <View style={styles.bottomBar} pointerEvents="auto">
-              <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={processing || analyzing}>
+              <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={processing || analyzing || isRecording}>
                 <MaterialIcons name="photo-library" size={32} color="#fff" />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.captureButton} onPress={takePicture} disabled={processing || analyzing}>
-                <View style={styles.captureButtonInner} />
-              </TouchableOpacity>
+              {mode === 'picture' ? (
+                  <TouchableOpacity style={styles.captureButton} onPress={takePicture} disabled={processing || analyzing}>
+                    <View style={styles.captureButtonInner} />
+                  </TouchableOpacity>
+              ) : (
+                  <TouchableOpacity 
+                    style={[styles.captureButton, { borderColor: '#ef4444' }]} 
+                    onPress={recordVideo}
+                    disabled={processing || analyzing}
+                  >
+                    <View style={[
+                        styles.captureButtonInner, 
+                        { backgroundColor: '#ef4444', borderRadius: isRecording ? 4 : 32, width: isRecording ? 32 : 64, height: isRecording ? 32 : 64 } 
+                    ]} />
+                  </TouchableOpacity>
+              )}
 
               <View style={styles.placeholderButton} />
             </View>
@@ -289,7 +415,7 @@ const styles = StyleSheet.create({
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
-    zIndex: 10, // Ensure it's above the camera
+    zIndex: 10,
   },
   permissionContainer: {
     flex: 1,
@@ -317,9 +443,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   topBar: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     padding: 16,
     alignItems: 'center',
+  },
+  modeSwitchContainer: {
+      flexDirection: 'row',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      borderRadius: 20,
+      padding: 4,
+  },
+  modeButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 16,
+  },
+  activeModeButton: {
+      backgroundColor: '#10b981',
+  },
+  modeText: {
+      color: '#d1d5db',
+      fontWeight: '600',
+  },
+  activeModeText: {
+      color: '#fff',
   },
   instructionText: {
     color: '#fff',
@@ -374,6 +521,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  videoBadge: {
+      position: 'absolute',
+      top: 20,
+      right: 20,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      padding: 8,
+      borderRadius: 20,
   },
   previewOverlay: {
     position: 'absolute',
