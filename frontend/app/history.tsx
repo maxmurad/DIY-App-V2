@@ -92,7 +92,7 @@ export default function HistoryScreen() {
       })}
     >
       <Image
-        source={{ uri: `data:image/jpeg;base64,${item.image_base64}` }}
+        source={{ uri: item.thumbnail_base64 || (item.image_base64 ? `data:image/jpeg;base64,${item.image_base64}` : undefined) }}
         style={styles.projectImage}
       />
       <View style={styles.projectContent}>
