@@ -127,8 +127,8 @@ async def analyze_repair_with_ai(image_base64: str, description: str) -> Dict:
             raise HTTPException(status_code=400, detail="Invalid image data")
 
         # Initialize Model
-        # Switched to gemini-1.5-flash for better availability and speed
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Switched to gemini-2.0-flash-exp for latest features (as 2.5 is not yet available)
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
         # Create system prompt context
         system_context = """You are an expert DIY home repair consultant with deep knowledge of:
