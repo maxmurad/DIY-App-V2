@@ -23,6 +23,10 @@ db = client[os.environ.get('DB_NAME', 'test_database')]
 
 # Create the main app without a prefix
 app = FastAPI()
+@app.get("/")
+async def health_check():
+    return {"status": "ok", "message": "Backend is running"}
+
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
