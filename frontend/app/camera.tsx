@@ -28,6 +28,20 @@ export default function CameraScreen() {
     })();
   }, []);
 
+  const processImage = async (uri: string) => {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1024 } }], // Resize to max width 1024px
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true } // Compress quality 0.6
+      );
+      return `data:image/jpeg;base64,${result.base64}`;
+    } catch (error) {
+      console.error('Error processing image:', error);
+      throw error;
+    }
+  };
+
   if (!permission) {
     return (
       <View style={styles.container}>
@@ -54,10 +68,15 @@ export default function CameraScreen() {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.7,
-          base64: true,
+          quality: 0.7, // Initial capture quality
+          base64: false, // We'll generate base64 after resizing
         });
-        setCapturedImage(`data:image/jpeg;base64,${photo.base64}`);
+        
+        // Process and compress image
+        if (photo.uri) {
+            const processedBase64 = await processImage(photo.uri);
+            setCapturedImage(processedBase64);
+        }
       } catch (error) {
         console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
@@ -72,11 +91,12 @@ export default function CameraScreen() {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
-        base64: true,
+        base64: false, // We'll generate base64 after resizing
       });
 
-      if (!result.canceled && result.assets[0].base64) {
-        setCapturedImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      if (!result.canceled && result.assets[0].uri) {
+        const processedBase64 = await processImage(result.assets[0].uri);
+        setCapturedImage(processedBase64);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -319,6 +339,8 @@ const styles = StyleSheet.create({
   previewImage: {
     flex: 1,
     width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   previewOverlay: {
     position: 'absolute',
