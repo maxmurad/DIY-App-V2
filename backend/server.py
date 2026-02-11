@@ -81,6 +81,7 @@ class Project(BaseModel):
     skill_level_name: str  # "Novice", "Beginner", "Intermediate", "Expert"
     estimated_time: str
     image_base64: str
+    thumbnail_base64: Optional[str] = "" # For list view
     hardware_identified: str
     issue_type: str
     steps: List[InstructionStep]
