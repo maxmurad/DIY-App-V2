@@ -11,6 +11,10 @@ import uuid
 from datetime import datetime
 import base64
 import google.generativeai as genai
+# Using older library name because server imports it. 
+# User reported error: "All support for the `google.generativeai` package has ended... switch to `google.genai`"
+# We need to migrate to the new `google-genai` library.
+
 from PIL import Image
 import io
 import json
