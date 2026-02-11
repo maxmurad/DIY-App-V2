@@ -176,7 +176,7 @@ eas build --platform ios --profile production
 
 ### .env (Frontend)
 ```
-EXPO_PUBLIC_BACKEND_URL=https://reverent-pike-2.preview.emergentagent.com
+EXPO_PUBLIC_BACKEND_URL=https://fixitpro-85.preview.emergentagent.com
 ```
 **Note:** Update this URL if deploying backend elsewhere
 

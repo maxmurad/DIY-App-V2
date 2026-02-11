@@ -49,7 +49,7 @@ All critical systems are running and operational. The application has successful
 **Load Time:** < 4 seconds  
 **Status:** ✅ Operational
 
-**Preview URL:** https://reverent-pike-2.preview.emergentagent.com  
+**Preview URL:** https://fixitpro-85.preview.emergentagent.com  
 **Status:** ✅ Accessible
 
 ---
@@ -286,7 +286,7 @@ All critical systems are operational. The application has demonstrated full end-
 
 ## 📱 ACCESS INFORMATION
 
-**Preview URL:** https://reverent-pike-2.preview.emergentagent.com
+**Preview URL:** https://fixitpro-85.preview.emergentagent.com
 
 **Mobile Testing:**
 1. Download Expo Go app on iOS/Android
@@ -294,7 +294,7 @@ All critical systems are operational. The application has demonstrated full end-
 3. Grant camera permissions
 4. Test complete user flow
 
-**API Endpoint:** https://reverent-pike-2.preview.emergentagent.com/api/
+**API Endpoint:** https://fixitpro-85.preview.emergentagent.com/api/
 
 ---
 

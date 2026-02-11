@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 # Get backend URL from frontend .env
-BACKEND_URL = "https://reverent-pike-2.preview.emergentagent.com/api"
+BACKEND_URL = "https://fixitpro-85.preview.emergentagent.com/api"
 
 def create_test_image():
     """Create a realistic test image of a leaking faucet for testing"""

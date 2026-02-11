@@ -19,10 +19,10 @@
 
 **Frontend (.env) - All 6 Required Variables Present:**
 ```
-✓ EXPO_TUNNEL_SUBDOMAIN=reverent-pike-2
-✓ EXPO_PACKAGER_HOSTNAME=https://reverent-pike-2.preview.emergentagent.com
+✓ EXPO_TUNNEL_SUBDOMAIN=fixitpro-85
+✓ EXPO_PACKAGER_HOSTNAME=https://fixitpro-85.preview.emergentagent.com
 ✓ EXPO_PACKAGER_PROXY_URL=https://goofy-wilbur-2.ngrok.io
-✓ EXPO_PUBLIC_BACKEND_URL=https://reverent-pike-2.preview.emergentagent.com
+✓ EXPO_PUBLIC_BACKEND_URL=https://fixitpro-85.preview.emergentagent.com
 ✓ EXPO_USE_FAST_RESOLVER="1"
 ✓ METRO_CACHE_ROOT=/app/frontend/.metro-cache
 ```
@@ -135,7 +135,7 @@
 ### Immediate Actions Available:
 
 1. **Test Current Preview Deployment:**
-   - URL: https://reverent-pike-2.preview.emergentagent.com
+   - URL: https://fixitpro-85.preview.emergentagent.com
    - Download Expo Go on mobile device
    - Scan QR code and test all features
 
