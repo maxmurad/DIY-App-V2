@@ -286,6 +286,96 @@ async def diagnose_repair(request: DiagnosisRequest):
         if not request.image_base64:
             raise HTTPException(status_code=400, detail="Image is required")
 
+@api_router.post("/diagnose-upload", response_model=ProjectResponse)
+async def diagnose_upload(
+    file: UploadFile = File(...),
+    description: str = Form(default=""),
+    thumbnail_base64: str = Form(default="")
+):
+    """Analyze an uploaded file (video/image) and create a repair project"""
+    try:
+        # Read file content
+        content_bytes = await file.read()
+        mime_type = file.content_type
+        
+        # Determine if video or image
+        is_video = mime_type.startswith("video")
+        
+        # Create GenAI part
+        content_part = types.Part.from_bytes(data=content_bytes, mime_type=mime_type)
+        
+        # Analyze
+        analysis = await analyze_repair_with_upload(content_part, description)
+        
+        # Handle Base64 storage
+        # If video, use thumbnail as the main image. If image, use the image itself (or thumbnail if provided).
+        # We need to construct a base64 string for storage.
+        
+        stored_image_base64 = ""
+        if is_video:
+            stored_image_base64 = thumbnail_base64 # Use thumbnail for video projects
+        else:
+             # For images, if thumbnail provided, use it? Or encode the original?
+             # To be safe and consistent with existing flow, we should store the image.
+             # But if it's large, we might want to resize.
+             # For now, let's assume the client sends a reasonable image or we use the thumbnail if user provided one.
+             # If client sent thumbnail_base64 for image, use it.
+             # Otherwise, encode the uploaded bytes.
+             if thumbnail_base64:
+                 stored_image_base64 = thumbnail_base64
+             else:
+                 stored_image_base64 = base64.b64encode(content_bytes).decode('utf-8')
+                 
+        # Ensure base64 prefix
+        if stored_image_base64 and not stored_image_base64.startswith("data:"):
+             # Guess mime type if not present. Default to jpeg for thumbnails.
+             stored_image_base64 = f"data:image/jpeg;base64,{stored_image_base64}"
+
+        # Create materials/tools/steps (Reuse logic - could be extracted)
+        materials = [
+            MaterialTool(name=m["name"], category="material", estimated_cost=m.get("estimated_cost", "varies"))
+            for m in analysis.get("materials", [])
+        ]
+        tools = [
+            MaterialTool(name=t["name"], category="tool", estimated_cost=t.get("estimated_cost", "varies"))
+            for t in analysis.get("tools", [])
+        ]
+        steps = [
+            InstructionStep(
+                step_number=s["step_number"],
+                title=s["title"],
+                description=s["description"],
+                warning=s.get("warning"),
+                image_hint=s.get("image_hint")
+            )
+            for s in analysis.get("steps", [])
+        ]
+
+        skill_level = analysis.get("skill_level", 2)
+        project = Project(
+            title=analysis.get("title", "Repair Project"),
+            description=analysis.get("description", ""),
+            skill_level=skill_level,
+            skill_level_name=get_skill_level_name(skill_level),
+            estimated_time=analysis.get("estimated_time", "1-2 hours"),
+            image_base64=stored_image_base64, # Used for Detail View
+            thumbnail_base64=thumbnail_base64 if thumbnail_base64 else stored_image_base64, # Used for List View
+            hardware_identified=analysis.get("hardware_identified", "Unknown"),
+            issue_type=analysis.get("issue_type", "General repair"),
+            steps=steps,
+            materials=materials,
+            tools=tools,
+            safety_warnings=analysis.get("safety_warnings", [])
+        )
+        
+        await db.projects.insert_one(project.dict())
+        logger.info(f"Project created via upload: {project.id}")
+        return ProjectResponse(project=project)
+        
+    except Exception as e:
+        logger.error(f"Diagnosis upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to diagnose: {str(e)}")
+
         # Get AI analysis
         analysis = await analyze_repair_with_ai(request.image_base64, request.description or "")
 
