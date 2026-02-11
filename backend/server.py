@@ -192,7 +192,7 @@ IMPORTANT:
         # Let's use the standard method.
         
         response = client_genai.models.generate_content(
-            model='gemini-2.0-flash', # Reverting to stable 2.0-flash model due to API key errors with 3-flash-preview
+            model='gemini-3-flash-preview', # User requested gemini-3-flash-preview
             contents=[analysis_prompt, image],
             config=types.GenerateContentConfig(
                 temperature=0.2,
