@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
-import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -16,9 +18,26 @@ export default function CameraScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [processing, setProcessing] = useState(false); // New state for image processing
+  const [processing, setProcessing] = useState(false);
+  const [zoom, setZoom] = useState(0); // Zoom state: 0 to 1
   const cameraRef = useRef<any>(null);
   const router = useRouter();
+
+  // Gesture for Pinch to Zoom
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      // Calculate new zoom based on pinch scale
+      // velocity is speed of pinch, scale is the multiplier
+      // We add a small fraction of the velocity to current zoom
+      const velocity = e.velocity / 20; 
+      let newZoom = zoom + (velocity * 0.05);
+      
+      // Clamp between 0 and 1
+      if (newZoom < 0) newZoom = 0;
+      if (newZoom > 1) newZoom = 1;
+      
+      runOnJS(setZoom)(newZoom);
+    });
 
   useEffect(() => {
     (async () => {
@@ -31,18 +50,18 @@ export default function CameraScreen() {
 
   const processImage = async (uri: string) => {
     try {
-      setProcessing(true); // Start processing indicator
+      setProcessing(true);
       const result = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 1024 } }], // Resize to max width 1024px
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true } // Compress quality 0.6
+        [{ resize: { width: 1024 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
       return `data:image/jpeg;base64,${result.base64}`;
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;
     } finally {
-      setProcessing(false); // Stop processing indicator
+      setProcessing(false);
     }
   };
 
@@ -69,7 +88,7 @@ export default function CameraScreen() {
   }
 
   const takePicture = async () => {
-    if (cameraRef.current && !processing && !analyzing) { // Prevent double clicks
+    if (cameraRef.current && !processing && !analyzing) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.7, 
@@ -89,7 +108,7 @@ export default function CameraScreen() {
   };
 
   const pickImage = async () => {
-    if (processing || analyzing) return; // Prevent interaction while busy
+    if (processing || analyzing) return;
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -119,7 +138,6 @@ export default function CameraScreen() {
 
     setAnalyzing(true);
     try {
-      // Extract base64 data without prefix
       const base64Data = capturedImage.split(',')[1];
 
       const response = await axios.post(
@@ -132,7 +150,7 @@ export default function CameraScreen() {
           headers: {
             'Content-Type': 'application/json',
           },
-          timeout: 120000, // 120 second timeout
+          timeout: 120000, 
         }
       );
 
@@ -163,7 +181,6 @@ export default function CameraScreen() {
     setDescription('');
   };
 
-  // Show processing overlay if working on image
   if (processing) {
     return (
       <View style={styles.container}>
@@ -183,7 +200,6 @@ export default function CameraScreen() {
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.previewContentWrapper}>
               <Image source={{ uri: capturedImage }} style={styles.previewImage} />
-              
               <View style={styles.previewOverlay}>
                 <Text style={styles.previewTitle}>Add Description (Optional)</Text>
                 <TextInput
@@ -198,35 +214,13 @@ export default function CameraScreen() {
                   blurOnSubmit={true}
                   onSubmitEditing={Keyboard.dismiss}
                 />
-
                 <View style={styles.previewActions}>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.retakeButton]} 
-                    onPress={retake}
-                    disabled={analyzing}
-                  >
+                  <TouchableOpacity style={[styles.actionButton, styles.retakeButton]} onPress={retake} disabled={analyzing}>
                     <MaterialIcons name="refresh" size={24} color="#ef4444" />
                     <Text style={styles.retakeButtonText}>Retake</Text>
                   </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.analyzeButton]} 
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      analyzeImage();
-                    }}
-                    disabled={analyzing}
-                  >
-                    {analyzing ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <MaterialIcons name="auto-fix-high" size={24} color="#fff" />
-                        <Text style={styles.analyzeButtonText}>
-                          {analyzing ? 'Analyzing...' : 'Analyze'}
-                        </Text>
-                      </>
-                    )}
+                  <TouchableOpacity style={[styles.actionButton, styles.analyzeButton]} onPress={() => { Keyboard.dismiss(); analyzeImage(); }} disabled={analyzing}>
+                    {analyzing ? <ActivityIndicator color="#fff" /> : <><MaterialIcons name="auto-fix-high" size={24} color="#fff" /><Text style={styles.analyzeButtonText}>Analyze</Text></>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -239,33 +233,32 @@ export default function CameraScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <CameraView style={styles.camera} ref={cameraRef} facing="back">
-        <View style={styles.cameraOverlay}>
-          <View style={styles.topBar}>
-            <Text style={styles.instructionText}>Position the item to repair</Text>
+      <GestureDetector gesture={pinchGesture}>
+        <CameraView 
+          style={styles.camera} 
+          ref={cameraRef} 
+          facing="back"
+          zoom={zoom}
+        >
+          <View style={styles.cameraOverlay}>
+            <View style={styles.topBar}>
+              <Text style={styles.instructionText}>Pinch to Zoom ({Math.round(zoom * 100)}%)</Text>
+            </View>
+
+            <View style={styles.bottomBar}>
+              <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={processing || analyzing}>
+                <MaterialIcons name="photo-library" size={32} color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.captureButton} onPress={takePicture} disabled={processing || analyzing}>
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+
+              <View style={styles.placeholderButton} />
+            </View>
           </View>
-
-          <View style={styles.bottomBar}>
-            <TouchableOpacity 
-                style={styles.galleryButton} 
-                onPress={pickImage}
-                disabled={processing || analyzing} // Disable while busy
-            >
-              <MaterialIcons name="photo-library" size={32} color="#fff" />
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-                style={styles.captureButton} 
-                onPress={takePicture}
-                disabled={processing || analyzing}
-            >
-              <View style={styles.captureButtonInner} />
-            </TouchableOpacity>
-
-            <View style={styles.placeholderButton} />
-          </View>
-        </View>
-      </CameraView>
+        </CameraView>
+      </GestureDetector>
     </SafeAreaView>
   );
 }
