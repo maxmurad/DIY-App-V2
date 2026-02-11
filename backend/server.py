@@ -445,6 +445,7 @@ async def get_projects():
     """Get all saved projects"""
     try:
         # Optimize: exclude large base64 images from list view
+        # Include thumbnail_base64
         projection = {
             "image_base64": 0  # Exclude base64 to reduce payload
         }
@@ -453,6 +454,8 @@ async def get_projects():
         # Add placeholder for image_base64 to satisfy model
         for proj in projects_data:
             proj["image_base64"] = ""
+            if "thumbnail_base64" not in proj:
+                 proj["thumbnail_base64"] = ""
         
         projects = [Project(**proj) for proj in projects_data]
         return ProjectListResponse(projects=projects)
