@@ -15,6 +15,7 @@ interface Project {
   skill_level_name: string;
   estimated_time: string;
   image_base64: string;
+  thumbnail_base64?: string;
   hardware_identified: string;
   issue_type: string;
   created_at: string;
