@@ -276,6 +276,20 @@ async def diagnose_repair(request: DiagnosisRequest):
             for s in analysis.get("steps", [])
         ]
 
+        # Create thumbnail from image
+        try:
+            img_data = request.image_base64.split("base64,")[1] if "base64," in request.image_base64 else request.image_base64
+            img_bytes = base64.b64decode(img_data)
+            img = Image.open(io.BytesIO(img_bytes))
+            img.thumbnail((300, 300)) # Resize to max 300x300
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG", quality=70)
+            thumb_base64_data = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            real_thumbnail = f"data:image/jpeg;base64,{thumb_base64_data}"
+        except Exception as e:
+            logger.warning(f"Failed to generate thumbnail: {e}")
+            real_thumbnail = request.image_base64 # Fallback
+
         # Create project
         skill_level = analysis.get("skill_level", 2)
         project = Project(
@@ -285,7 +299,7 @@ async def diagnose_repair(request: DiagnosisRequest):
             skill_level_name=get_skill_level_name(skill_level),
             estimated_time=analysis.get("estimated_time", "1-2 hours"),
             image_base64=request.image_base64,
-            thumbnail_base64=request.image_base64, # Default to same image for JSON API
+            thumbnail_base64=real_thumbnail, 
             hardware_identified=analysis.get("hardware_identified", "Unknown"),
             issue_type=analysis.get("issue_type", "General repair"),
             steps=steps,
