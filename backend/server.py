@@ -10,7 +10,10 @@ from typing import List, Optional, Dict
 import uuid
 from datetime import datetime
 import base64
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+import google.generativeai as genai
+from PIL import Image
+import io
+import json
 import asyncio
 
 ROOT_DIR = Path(__file__).parent
@@ -23,16 +26,25 @@ db = client[os.environ.get('DB_NAME', 'test_database')]
 
 # Create the main app without a prefix
 app = FastAPI()
-@app.get("/")
-async def health_check():
-    return {"status": "ok", "message": "Backend is running"}
-
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Emergent LLM Key
+# Google Gemini API Key
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
+# Fallback to Emergent key if Google key is missing (for backward compatibility in dev)
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+
+# Configure Gemini
+# Prioritize GOOGLE_API_KEY, but if it's empty and we have an Emergent key, 
+# we might need to warn the user. For Render, they MUST set GOOGLE_API_KEY.
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+elif EMERGENT_LLM_KEY and not GOOGLE_API_KEY:
+    # Try to use emergent key as google key (sometimes they are compatible if direct)
+    # But usually not. We will log a warning.
+    logging.warning("Using EMERGENT_LLM_KEY. This may fail on cloud deployment. Please set GOOGLE_API_KEY.")
+    genai.configure(api_key=EMERGENT_LLM_KEY)
 
 # Configure logging
 logging.basicConfig(
@@ -101,29 +113,37 @@ def get_skill_level_name(level: int) -> str:
     return mapping.get(level, "Beginner")
 
 async def analyze_repair_with_ai(image_base64: str, description: str) -> Dict:
-    """Use Gemini 1.5 Pro Vision to analyze the repair need"""
+    """Use Google Gemini 1.5 Pro to analyze the repair need"""
     try:
-        # Create chat instance
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=str(uuid.uuid4()),
-            system_message="""You are an expert DIY home repair consultant with deep knowledge of:
+        # Prepare Image
+        if "base64," in image_base64:
+            image_base64 = image_base64.split("base64,")[1]
+        
+        try:
+            image_bytes = base64.b64decode(image_base64)
+            image = Image.open(io.BytesIO(image_bytes))
+        except Exception as img_err:
+            logger.error(f"Image processing error: {img_err}")
+            raise HTTPException(status_code=400, detail="Invalid image data")
+
+        # Initialize Model
+        model = genai.GenerativeModel('gemini-1.5-pro')
+
+        # Create system prompt context
+        system_context = """You are an expert DIY home repair consultant with deep knowledge of:
 - Hardware identification (faucets, fixtures, appliances, brands)
 - Building materials (drywall, plaster, wood types, metals)
 - Damage assessment (cracks, leaks, wear, malfunction)
 - Repair difficulty and safety considerations
 
-Analyze images and provide detailed, actionable repair guidance."""
-        ).with_model("gemini", "gemini-2.5-pro")
-
-        # Create image content
-        image_content = ImageContent(image_base64=image_base64)
+Analyze the provided image and description to give detailed, actionable repair guidance."""
 
         # Create analysis prompt
-        analysis_prompt = f"""Analyze this image for a DIY home repair assessment.
+        analysis_prompt = f"""{system_context}
 
-{f'User description: {description}' if description else ''}
+User description: {description if description else 'No description provided.'}
 
+Analyze this image for a DIY home repair assessment.
 Provide a comprehensive analysis in the following JSON format:
 {{
   "title": "Brief descriptive title of the repair (e.g., 'Fix Leaky Moen Kitchen Faucet')",
@@ -162,21 +182,16 @@ IMPORTANT:
 - Rate difficulty honestly based on the criteria
 - Include at least 5-10 detailed steps
 - List all materials and tools needed
-- Provide safety warnings for any risky steps"""
+- Provide safety warnings for any risky steps
+- RETURN ONLY RAW JSON. Do not include markdown formatting like ```json ... ```"""
 
-        # Send message with image
-        user_message = UserMessage(
-            text=analysis_prompt,
-            file_contents=[image_content]
-        )
+        # Generate content
+        response = await model.generate_content_async([analysis_prompt, image])
+        response_text = response.text
+        logger.info(f"AI Response received")
 
-        response = await chat.send_message(user_message)
-        logger.info(f"AI Response: {response}")
-
-        # Parse JSON from response
-        import json
-        # Extract JSON from response (might be wrapped in markdown code blocks)
-        response_text = response.strip()
+        # Clean up response if it contains markdown
+        response_text = response_text.strip()
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0].strip()
         elif "```" in response_text:
@@ -190,6 +205,10 @@ IMPORTANT:
         raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 # ============ API Routes ============
+
+@app.get("/")
+async def health_check():
+    return {"status": "ok", "message": "Backend is running"}
 
 @api_router.get("/")
 async def root():
