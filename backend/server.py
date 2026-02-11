@@ -115,10 +115,6 @@ def get_skill_level_name(level: int) -> str:
 async def analyze_repair_with_ai(image_base64: str, description: str) -> Dict:
     """Use Google Gemini 2.5 Flash to analyze the repair need"""
     try:
-        if not client_genai:
-            raise ValueError("Google GenAI client not initialized. Check API keys.")
-
-        # Prepare Image
         if "base64," in image_base64:
             image_base64 = image_base64.split("base64,")[1]
         
@@ -128,22 +124,36 @@ async def analyze_repair_with_ai(image_base64: str, description: str) -> Dict:
         except Exception as img_err:
             logger.error(f"Image processing error: {img_err}")
             raise HTTPException(status_code=400, detail="Invalid image data")
+            
+        return await analyze_common(image, description)
+    except Exception as e:
+        logger.error(f"AI analysis error: {str(e)}")
+        # Fallback error handling
+        if "404" in str(e):
+             raise HTTPException(status_code=404, detail=f"AI Model not found or not compatible. {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
-        # Create system prompt context
-        system_context = """You are an expert DIY home repair consultant with deep knowledge of:
-- Hardware identification (faucets, fixtures, appliances, brands)
-- Building materials (drywall, plaster, wood types, metals)
-- Damage assessment (cracks, leaks, wear, malfunction)
-- Repair difficulty and safety considerations
+async def analyze_repair_with_upload(content_part: types.Part, description: str) -> Dict:
+    """Analyze repair using a file part (video or image)"""
+    return await analyze_common(content_part, description)
 
-Analyze the provided image and description to give detailed, actionable repair guidance."""
+async def analyze_common(content, description: str) -> Dict:
+    """Common analysis logic"""
+    try:
+        if not client_genai:
+             raise ValueError("Google GenAI client not initialized. Check API keys.")
 
-        # Create analysis prompt
+        system_context = """You are an expert DIY home repair consultant.
+Analyze the provided video or image to give detailed, actionable repair guidance.
+If provided a video, pay attention to sound and movement to diagnose the issue.
+
+Analyze the provided media and description to give detailed, actionable repair guidance."""
+
         analysis_prompt = f"""{system_context}
 
 User description: {description if description else 'No description provided.'}
 
-Analyze this image for a DIY home repair assessment.
+Analyze this media for a DIY home repair assessment.
 Provide a comprehensive analysis in the following JSON format:
 {{
   "title": "Brief descriptive title of the repair (e.g., 'Fix Leaky Moen Kitchen Faucet')",
@@ -185,16 +195,9 @@ IMPORTANT:
 - Provide safety warnings for any risky steps
 - RETURN ONLY RAW JSON. Do not include markdown formatting like ```json ... ```"""
 
-        # Generate content using new google-genai SDK
-        # Note: asyncio wrapping might be needed if the client isn't natively async in this version,
-        # but typically we can use the async client or run in executor.
-        # For simplicity in migration, we use the synchronous generate_content method inside a thread if needed,
-        # but modern google-genai has async support.
-        # Let's use the standard method.
-        
         response = client_genai.models.generate_content(
-            model='gemini-3-flash-preview', # User requested gemini-3-flash-preview
-            contents=[analysis_prompt, image],
+            model='gemini-3-flash-preview', 
+            contents=[analysis_prompt, content],
             config=types.GenerateContentConfig(
                 temperature=0.2,
             )
@@ -218,55 +221,8 @@ IMPORTANT:
         # Fallback error handling
         if "404" in str(e):
              raise HTTPException(status_code=404, detail=f"AI Model not found or not compatible. {str(e)}")
-        
-async def analyze_repair_with_upload(content_part: types.Part, description: str) -> Dict:
-    """Analyze repair using a file part (video or image)"""
-    try:
-        if not client_genai:
-             raise ValueError("Google GenAI client not initialized.")
-
-        system_context = """You are an expert DIY home repair consultant.
-Analyze the provided video or image to give detailed, actionable repair guidance.
-If provided a video, pay attention to sound and movement to diagnose the issue."""
-
-        analysis_prompt = f"""{system_context}
-
-User description: {description}
-
-Analyze this media for a DIY home repair assessment.
-Provide a comprehensive analysis in JSON format matching this schema:
-{{
-  "title": "Title",
-  "hardware_identified": "Hardware",
-  "issue_type": "Issue",
-  "description": "Description",
-  "skill_level": 1-4,
-  "estimated_time": "Time",
-  "safety_warnings": ["Warning"],
-  "steps": [{{ "step_number": 1, "title": "Step", "description": "Desc", "warning": "Warn", "image_hint": "Hint" }}],
-  "materials": [{{ "name": "Mat", "estimated_cost": "Cost" }}],
-  "tools": [{{ "name": "Tool", "estimated_cost": "Cost" }}]
-}}
-RETURN ONLY RAW JSON.
-"""
-        response = client_genai.models.generate_content(
-            model='gemini-3-flash-preview',
-            contents=[analysis_prompt, content_part],
-            config=types.GenerateContentConfig(temperature=0.2)
-        )
-        
-        response_text = response.text.strip()
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0].strip()
-            
-        return json.loads(response_text)
-    except Exception as e:
-        logger.error(f"AI analysis upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
-        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 # ============ API Routes ============
 
@@ -285,6 +241,71 @@ async def diagnose_repair(request: DiagnosisRequest):
         # Validate base64 image
         if not request.image_base64:
             raise HTTPException(status_code=400, detail="Image is required")
+
+        # Get AI analysis
+        analysis = await analyze_repair_with_ai(request.image_base64, request.description or "")
+
+        # Create materials and tools lists with IDs
+        materials = [
+            MaterialTool(
+                name=m["name"],
+                category="material",
+                estimated_cost=m.get("estimated_cost", "varies")
+            )
+            for m in analysis.get("materials", [])
+        ]
+
+        tools = [
+            MaterialTool(
+                name=t["name"],
+                category="tool",
+                estimated_cost=t.get("estimated_cost", "varies")
+            )
+            for t in analysis.get("tools", [])
+        ]
+
+        # Create instruction steps with IDs
+        steps = [
+            InstructionStep(
+                step_number=s["step_number"],
+                title=s["title"],
+                description=s["description"],
+                warning=s.get("warning"),
+                image_hint=s.get("image_hint")
+            )
+            for s in analysis.get("steps", [])
+        ]
+
+        # Create project
+        skill_level = analysis.get("skill_level", 2)
+        project = Project(
+            title=analysis.get("title", "Repair Project"),
+            description=analysis.get("description", ""),
+            skill_level=skill_level,
+            skill_level_name=get_skill_level_name(skill_level),
+            estimated_time=analysis.get("estimated_time", "1-2 hours"),
+            image_base64=request.image_base64,
+            thumbnail_base64=request.image_base64, # Default to same image for JSON API
+            hardware_identified=analysis.get("hardware_identified", "Unknown"),
+            issue_type=analysis.get("issue_type", "General repair"),
+            steps=steps,
+            materials=materials,
+            tools=tools,
+            safety_warnings=analysis.get("safety_warnings", [])
+        )
+
+        # Save to database
+        project_dict = project.dict()
+        await db.projects.insert_one(project_dict)
+
+        logger.info(f"Project created: {project.id}")
+        return ProjectResponse(project=project)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Diagnosis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to diagnose: {str(e)}")
 
 @api_router.post("/diagnose-upload", response_model=ProjectResponse)
 async def diagnose_upload(
@@ -308,19 +329,10 @@ async def diagnose_upload(
         analysis = await analyze_repair_with_upload(content_part, description)
         
         # Handle Base64 storage
-        # If video, use thumbnail as the main image. If image, use the image itself (or thumbnail if provided).
-        # We need to construct a base64 string for storage.
-        
         stored_image_base64 = ""
         if is_video:
             stored_image_base64 = thumbnail_base64 # Use thumbnail for video projects
         else:
-             # For images, if thumbnail provided, use it? Or encode the original?
-             # To be safe and consistent with existing flow, we should store the image.
-             # But if it's large, we might want to resize.
-             # For now, let's assume the client sends a reasonable image or we use the thumbnail if user provided one.
-             # If client sent thumbnail_base64 for image, use it.
-             # Otherwise, encode the uploaded bytes.
              if thumbnail_base64:
                  stored_image_base64 = thumbnail_base64
              else:
@@ -328,7 +340,6 @@ async def diagnose_upload(
                  
         # Ensure base64 prefix
         if stored_image_base64 and not stored_image_base64.startswith("data:"):
-             # Guess mime type if not present. Default to jpeg for thumbnails.
              stored_image_base64 = f"data:image/jpeg;base64,{stored_image_base64}"
 
         # Create materials/tools/steps (Reuse logic - could be extracted)
@@ -374,70 +385,6 @@ async def diagnose_upload(
         
     except Exception as e:
         logger.error(f"Diagnosis upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to diagnose: {str(e)}")
-
-        # Get AI analysis
-        analysis = await analyze_repair_with_ai(request.image_base64, request.description or "")
-
-        # Create materials and tools lists with IDs
-        materials = [
-            MaterialTool(
-                name=m["name"],
-                category="material",
-                estimated_cost=m.get("estimated_cost", "varies")
-            )
-            for m in analysis.get("materials", [])
-        ]
-
-        tools = [
-            MaterialTool(
-                name=t["name"],
-                category="tool",
-                estimated_cost=t.get("estimated_cost", "varies")
-            )
-            for t in analysis.get("tools", [])
-        ]
-
-        # Create instruction steps with IDs
-        steps = [
-            InstructionStep(
-                step_number=s["step_number"],
-                title=s["title"],
-                description=s["description"],
-                warning=s.get("warning"),
-                image_hint=s.get("image_hint")
-            )
-            for s in analysis.get("steps", [])
-        ]
-
-        # Create project
-        skill_level = analysis.get("skill_level", 2)
-        project = Project(
-            title=analysis.get("title", "Repair Project"),
-            description=analysis.get("description", ""),
-            skill_level=skill_level,
-            skill_level_name=get_skill_level_name(skill_level),
-            estimated_time=analysis.get("estimated_time", "1-2 hours"),
-            image_base64=request.image_base64,
-            hardware_identified=analysis.get("hardware_identified", "Unknown"),
-            issue_type=analysis.get("issue_type", "General repair"),
-            steps=steps,
-            materials=materials,
-            tools=tools,
-            safety_warnings=analysis.get("safety_warnings", [])
-        )
-
-        # Save to database
-        project_dict = project.dict()
-        await db.projects.insert_one(project_dict)
-
-        logger.info(f"Project created: {project.id}")
-        return ProjectResponse(project=project)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Diagnosis error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to diagnose: {str(e)}")
 
 @api_router.get("/projects", response_model=ProjectListResponse)
