@@ -41,7 +41,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>1. Capture the Issue</Text>
-              <Text style={styles.featureText}>Take a photo of what needs fixing</Text>
+              <Text style={styles.featureText}>Take a photo/video of what needs fixing</Text>
             </View>
           </View>
 
