@@ -129,7 +129,7 @@ export default function CameraScreen() {
           try {
               setIsRecording(true);
               const video = await cameraRef.current.recordAsync({
-                  maxDuration: 5,
+                  maxDuration: 10,
                   quality: '480p', // Keep size small for upload
                   mute: false
               });
