@@ -159,12 +159,14 @@ export default function ProjectScreen() {
               </View>
           </View>
 
-          {Platform.OS === 'ios' && (
-            <TouchableOpacity style={styles.arButton} onPress={openARView}>
-              <MaterialIcons name="view-in-ar" size={20} color={HOUZZ_GREEN} />
-              <Text style={styles.arButtonText}>AR Guide Available</Text>
-            </TouchableOpacity>
-          )}
+          {/* AR Guide Button - Available on all platforms */}
+          <TouchableOpacity style={styles.arButton} onPress={openARView}>
+            <MaterialIcons name="view-in-ar" size={20} color={HOUZZ_GREEN} />
+            <Text style={styles.arButtonText}>AR Guide</Text>
+            <View style={styles.experimentalTag}>
+              <Text style={styles.experimentalTagText}>BETA</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Materials & Tools */}
