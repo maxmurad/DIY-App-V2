@@ -13,6 +13,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const HOUZZ_GREEN = '#3dae2b';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -84,7 +85,7 @@ export default function CameraScreen() {
   if (!permission) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#10b981" />
+        <ActivityIndicator size="large" color={HOUZZ_GREEN} />
       </View>
     );
   }
@@ -286,7 +287,7 @@ export default function CameraScreen() {
   if (processing) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#10b981" />
+        <ActivityIndicator size="large" color={HOUZZ_GREEN} />
         <Text style={{color: 'white', marginTop: 20}}>Processing...</Text>
       </View>
     );
@@ -355,13 +356,19 @@ export default function CameraScreen() {
 
         <View style={styles.overlayContainer} pointerEvents="box-none">
             <View style={styles.topBar}>
-               <View style={styles.modeSwitchContainer}>
-                  <TouchableOpacity onPress={() => setMode('picture')} style={[styles.modeButton, mode === 'picture' && styles.activeModeButton]}>
-                      <Text style={[styles.modeText, mode === 'picture' && styles.activeModeText]}>Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setMode('video')} style={[styles.modeButton, mode === 'video' && styles.activeModeButton]}>
-                      <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
-                  </TouchableOpacity>
+               <View style={styles.headerRow}>
+                   <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <MaterialIcons name="arrow-back" size={24} color="#fff" />
+                   </TouchableOpacity>
+                   <View style={styles.modeSwitchContainer}>
+                      <TouchableOpacity onPress={() => setMode('picture')} style={[styles.modeButton, mode === 'picture' && styles.activeModeButton]}>
+                          <Text style={[styles.modeText, mode === 'picture' && styles.activeModeText]}>Photo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setMode('video')} style={[styles.modeButton, mode === 'video' && styles.activeModeButton]}>
+                          <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
+                      </TouchableOpacity>
+                   </View>
+                   <View style={{width: 40}} /> 
                </View>
             </View>
 
@@ -432,7 +439,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: HOUZZ_GREEN,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -444,8 +451,17 @@ const styles = StyleSheet.create({
   },
   topBar: {
     backgroundColor: 'rgba(0,0,0,0.3)',
-    padding: 16,
-    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+  },
+  headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+  },
+  backButton: {
+      padding: 8,
   },
   modeSwitchContainer: {
       flexDirection: 'row',
@@ -459,7 +475,7 @@ const styles = StyleSheet.create({
       borderRadius: 16,
   },
   activeModeButton: {
-      backgroundColor: '#10b981',
+      backgroundColor: HOUZZ_GREEN,
   },
   modeText: {
       color: '#d1d5db',
@@ -468,17 +484,12 @@ const styles = StyleSheet.create({
   activeModeText: {
       color: '#fff',
   },
-  instructionText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   bottomBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 32,
-    paddingVertical: 32,
+    paddingVertical: 48,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   galleryButton: {
@@ -497,13 +508,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: '#10b981',
+    borderColor: HOUZZ_GREEN,
   },
   captureButtonInner: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#10b981',
+    backgroundColor: HOUZZ_GREEN,
   },
   placeholderButton: {
     width: 56,
@@ -580,7 +591,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   analyzeButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: HOUZZ_GREEN,
   },
   analyzeButtonText: {
     color: '#fff',

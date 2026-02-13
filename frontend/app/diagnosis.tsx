@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const HOUZZ_GREEN = '#3dae2b';
 
 interface Project {
   id: string;
@@ -47,34 +48,14 @@ export default function DiagnosisScreen() {
     }
   };
 
-  const getSkillLevelColor = (level: number) => {
-    switch (level) {
-      case 1: return '#10b981';
-      case 2: return '#3b82f6';
-      case 3: return '#f59e0b';
-      case 4: return '#ef4444';
-      default: return '#6b7280';
-    }
-  };
-
-  const getSkillLevelIcon = (level: number) => {
-    switch (level) {
-      case 1: return 'grade';
-      case 2: return 'star-half';
-      case 3: return 'star';
-      case 4: return 'warning';
-      default: return 'help';
-    }
-  };
-
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10b981" />
+          <ActivityIndicator size="large" color={HOUZZ_GREEN} />
           <Text style={styles.loadingText}>Analyzing your repair...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -90,119 +71,89 @@ export default function DiagnosisScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Image Preview */}
-        <Image 
-          source={{ uri: `data:image/jpeg;base64,${project.image_base64}` }} 
-          style={styles.headerImage}
-        />
-
-        {/* Title & Basic Info */}
-        <View style={styles.headerSection}>
-          <Text style={styles.title}>{project.title}</Text>
-          
-          <View style={styles.infoRow}>
-            <View style={[styles.badge, { backgroundColor: getSkillLevelColor(project.skill_level) }]}>
-              <MaterialIcons 
-                name={getSkillLevelIcon(project.skill_level) as any} 
-                size={16} 
-                color="#fff" 
-              />
-              <Text style={styles.badgeText}>{project.skill_level_name}</Text>
+        <View style={styles.imageContainer}>
+            <Image 
+            source={{ uri: `data:image/jpeg;base64,${project.image_base64}` }} 
+            style={styles.headerImage}
+            />
+            <View style={styles.overlay} />
+            <SafeAreaView style={styles.headerSafeArea} edges={['top']}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+                    <MaterialIcons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+            </SafeAreaView>
+            <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>{project.title}</Text>
+                <Text style={styles.headerSubtitle}>{project.issue_type} • {project.estimated_time}</Text>
             </View>
-            
-            <View style={styles.badge}>
-              <MaterialIcons name="schedule" size={16} color="#6b7280" />
-              <Text style={[styles.badgeText, { color: '#6b7280' }]}>
-                {project.estimated_time}
-              </Text>
-            </View>
-          </View>
         </View>
 
         {/* Identification */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="search" size={24} color="#10b981" />
-            <Text style={styles.sectionTitle}>Identification</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Identification</Text>
           
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Hardware Detected</Text>
-            <Text style={styles.infoValue}>{project.hardware_identified}</Text>
-          </View>
-          
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Issue Type</Text>
-            <Text style={styles.infoValue}>{project.issue_type}</Text>
+          <View style={styles.infoRow}>
+            <View style={styles.infoBlock}>
+                <Text style={styles.infoLabel}>Hardware</Text>
+                <Text style={styles.infoValue}>{project.hardware_identified}</Text>
+            </View>
+            <View style={styles.infoBlock}>
+                <Text style={styles.infoLabel}>Difficulty</Text>
+                <Text style={[styles.infoValue, { color: HOUZZ_GREEN }]}>{project.skill_level_name}</Text>
+            </View>
           </View>
         </View>
 
         {/* Description */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="description" size={24} color="#10b981" />
-            <Text style={styles.sectionTitle}>Problem Description</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Problem</Text>
           <Text style={styles.description}>{project.description}</Text>
         </View>
 
         {/* Safety Warnings */}
         {project.safety_warnings && project.safety_warnings.length > 0 && (
           <View style={styles.section}>
-            <View style={[styles.sectionHeader, styles.warningHeader]}>
-              <MaterialIcons name="warning" size={24} color="#f59e0b" />
-              <Text style={[styles.sectionTitle, { color: '#f59e0b' }]}>Safety Warnings</Text>
+            <View style={styles.warningHeader}>
+              <MaterialIcons name="warning" size={20} color="#f59e0b" />
+              <Text style={styles.warningTitle}>Safety First</Text>
             </View>
             {project.safety_warnings.map((warning, index) => (
-              <View key={index} style={styles.warningCard}>
-                <MaterialIcons name="warning" size={20} color="#f59e0b" />
+              <View key={index} style={styles.warningRow}>
+                <Text style={styles.bulletPoint}>•</Text>
                 <Text style={styles.warningText}>{warning}</Text>
               </View>
             ))}
           </View>
         )}
 
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{project.steps.length}</Text>
-            <Text style={styles.statLabel}>Steps</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{project.materials.length}</Text>
-            <Text style={styles.statLabel}>Materials</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{project.tools.length}</Text>
-            <Text style={styles.statLabel}>Tools</Text>
-          </View>
-        </View>
-
         {/* Action Button */}
-        <TouchableOpacity 
-          style={styles.continueButton}
-          onPress={() => router.push({
-            pathname: '/project',
-            params: { projectId: project.id }
-          })}
-        >
-          <Text style={styles.continueButtonText}>View Repair Instructions</Text>
-          <MaterialIcons name="arrow-forward" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.footer}>
+            <TouchableOpacity 
+            style={styles.continueButton}
+            onPress={() => router.push({
+                pathname: '/project',
+                params: { projectId: project.id }
+            })}
+            >
+            <Text style={styles.continueButtonText}>Start Repair</Text>
+            <MaterialIcons name="arrow-forward" size={24} color="#fff" />
+            </TouchableOpacity>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff',
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -212,7 +163,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
+    color: '#666',
   },
   errorContainer: {
     flex: 1,
@@ -225,139 +176,134 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ef4444',
   },
+  imageContainer: {
+      height: 400,
+      width: '100%',
+      position: 'relative',
+  },
   headerImage: {
     width: '100%',
-    height: 250,
+    height: '100%',
     backgroundColor: '#e5e7eb',
   },
-  headerSection: {
-    padding: 20,
-    backgroundColor: '#fff',
+  overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
+  headerSafeArea: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
   },
-  infoRow: {
-    flexDirection: 'row',
-    gap: 8,
+  closeButton: {
+      marginLeft: 20,
+      padding: 8,
   },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    gap: 4,
+  headerTextContainer: {
+      position: 'absolute',
+      bottom: 40,
+      left: 20,
+      right: 20,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+  headerTitle: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: '#fff',
+      marginBottom: 8,
+      fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+      textShadowColor: 'rgba(0,0,0,0.5)',
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 4,
+  },
+  headerSubtitle: {
+      fontSize: 16,
+      color: 'rgba(255,255,255,0.9)',
+      fontWeight: '500',
   },
   section: {
-    padding: 20,
-    backgroundColor: '#fff',
-    marginTop: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  warningHeader: {
-    backgroundColor: '#fef3c7',
-    marginHorizontal: -20,
-    marginTop: -20,
+    fontWeight: '700',
+    color: '#333',
     marginBottom: 16,
-    padding: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
-  infoCard: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+  infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+  },
+  infoBlock: {
+      flex: 1,
   },
   infoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 4,
-    textTransform: 'uppercase',
+      fontSize: 12,
+      color: '#888',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 4,
   },
   infoValue: {
-    fontSize: 16,
-    color: '#111827',
-    fontWeight: '500',
+      fontSize: 18,
+      color: '#333',
+      fontWeight: '500',
   },
   description: {
-    fontSize: 15,
-    color: '#374151',
-    lineHeight: 22,
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 24,
   },
-  warningCard: {
-    backgroundColor: '#fef3c7',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    gap: 8,
+  warningHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+      gap: 8,
+  },
+  warningTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#f59e0b',
+  },
+  warningRow: {
+      flexDirection: 'row',
+      marginBottom: 8,
+  },
+  bulletPoint: {
+      fontSize: 16,
+      color: '#666',
+      marginRight: 8,
+      lineHeight: 24,
   },
   warningText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#92400e',
-    lineHeight: 20,
+      flex: 1,
+      fontSize: 15,
+      color: '#666',
+      lineHeight: 24,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: 20,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#10b981',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
+  footer: {
+      padding: 24,
   },
   continueButton: {
-    backgroundColor: '#10b981',
-    marginHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: HOUZZ_GREEN,
+    paddingVertical: 18,
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    shadowColor: HOUZZ_GREEN,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   continueButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

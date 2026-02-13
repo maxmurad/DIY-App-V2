@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const HOUZZ_GREEN = '#3dae2b';
 
 interface MaterialTool {
   id: string;
@@ -102,12 +103,12 @@ export default function ProjectScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10b981" />
+          <ActivityIndicator size="large" color={HOUZZ_GREEN} />
           <Text style={styles.loadingText}>Loading project...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -126,43 +127,56 @@ export default function ProjectScreen() {
   const neededTools = project.tools.filter(t => !t.already_owned);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Project Image Header */}
-        <Image
-          source={{ uri: project.image_base64.startsWith('data:') ? project.image_base64 : `data:image/jpeg;base64,${project.image_base64}` }}
-          style={styles.projectImageHeader}
-          resizeMode="cover"
-        />
+        <View style={styles.imageHeaderContainer}>
+            <Image
+            source={{ uri: project.image_base64.startsWith('data:') ? project.image_base64 : `data:image/jpeg;base64,${project.image_base64}` }}
+            style={styles.projectImageHeader}
+            resizeMode="cover"
+            />
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <MaterialIcons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+        </View>
 
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.projectTitle}>{project.title}</Text>
           
+          <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                  <MaterialIcons name="schedule" size={16} color="#666" />
+                  <Text style={styles.metaText}>{project.estimated_time}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                  <MaterialIcons name="equalizer" size={16} color="#666" />
+                  <Text style={styles.metaText}>{project.skill_level_name}</Text>
+              </View>
+          </View>
+
           {Platform.OS === 'ios' && (
             <TouchableOpacity style={styles.arButton} onPress={openARView}>
-              <MaterialIcons name="view-in-ar" size={24} color="#fff" />
-              <Text style={styles.arButtonText}>AR Guide</Text>
+              <MaterialIcons name="view-in-ar" size={20} color={HOUZZ_GREEN} />
+              <Text style={styles.arButtonText}>AR Guide Available</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Materials & Tools */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="shopping-cart" size={24} color="#10b981" />
-            <Text style={styles.sectionTitle}>Materials</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Materials</Text>
           {project.materials.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.itemCard}
+              style={styles.itemRow}
               onPress={() => toggleItemOwnership(item.id, item.already_owned)}
             >
               <MaterialIcons
-                name={item.already_owned ? 'check-circle' : 'radio-button-unchecked'}
+                name={item.already_owned ? 'check-box' : 'check-box-outline-blank'}
                 size={24}
-                color={item.already_owned ? '#10b981' : '#d1d5db'}
+                color={item.already_owned ? '#aaa' : HOUZZ_GREEN}
               />
               <View style={styles.itemContent}>
                 <Text style={[styles.itemName, item.already_owned && styles.itemNameOwned]}>
@@ -174,32 +188,20 @@ export default function ProjectScreen() {
               </View>
             </TouchableOpacity>
           ))}
-          
-          {neededMaterials.length > 0 && (
-            <View style={styles.mockPurchaseButton}>
-              <MaterialIcons name="add-shopping-cart" size={20} color="#3b82f6" />
-              <Text style={styles.mockPurchaseText}>
-                Add {neededMaterials.length} missing item(s) to cart (Mock)
-              </Text>
-            </View>
-          )}
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="build" size={24} color="#10b981" />
-            <Text style={styles.sectionTitle}>Tools</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Tools</Text>
           {project.tools.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.itemCard}
+              style={styles.itemRow}
               onPress={() => toggleItemOwnership(item.id, item.already_owned)}
             >
               <MaterialIcons
-                name={item.already_owned ? 'check-circle' : 'radio-button-unchecked'}
+                name={item.already_owned ? 'check-box' : 'check-box-outline-blank'}
                 size={24}
-                color={item.already_owned ? '#10b981' : '#d1d5db'}
+                color={item.already_owned ? '#aaa' : HOUZZ_GREEN}
               />
               <View style={styles.itemContent}>
                 <Text style={[styles.itemName, item.already_owned && styles.itemNameOwned]}>
@@ -211,75 +213,64 @@ export default function ProjectScreen() {
               </View>
             </TouchableOpacity>
           ))}
-          
-          {neededTools.length > 0 && (
-            <View style={styles.mockPurchaseButton}>
-              <MaterialIcons name="add-shopping-cart" size={20} color="#3b82f6" />
-              <Text style={styles.mockPurchaseText}>
-                Add {neededTools.length} missing tool(s) to cart (Mock)
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* Step-by-Step Instructions */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="list" size={24} color="#10b981" />
-            <Text style={styles.sectionTitle}>Step-by-Step Instructions</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Instructions</Text>
 
           {project.steps.map((step) => (
-            <View key={step.id} style={styles.stepCard}>
-              <TouchableOpacity
-                style={styles.stepHeader}
-                onPress={() => setExpandedStep(expandedStep === step.step_number ? null : step.step_number)}
-              >
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>{step.step_number}</Text>
-                </View>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <MaterialIcons
-                  name={expandedStep === step.step_number ? 'expand-less' : 'expand-more'}
-                  size={24}
-                  color="#6b7280"
-                />
-              </TouchableOpacity>
+            <View key={step.id} style={styles.stepContainer}>
+              <View style={styles.stepLeftColumn}>
+                  <View style={[styles.stepCircle, expandedStep === step.step_number && styles.stepCircleActive]}>
+                      <Text style={[styles.stepNumber, expandedStep === step.step_number && styles.stepNumberActive]}>{step.step_number}</Text>
+                  </View>
+                  {step.step_number !== project.steps.length && <View style={styles.stepLine} />}
+              </View>
+              
+              <View style={styles.stepRightColumn}>
+                  <TouchableOpacity
+                    style={styles.stepHeader}
+                    onPress={() => setExpandedStep(expandedStep === step.step_number ? null : step.step_number)}
+                  >
+                    <Text style={styles.stepTitle}>{step.title}</Text>
+                  </TouchableOpacity>
 
-              {expandedStep === step.step_number && (
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepDescription}>{step.description}</Text>
-                  
-                  {step.image_hint && (
-                    <View style={styles.hintCard}>
-                      <MaterialIcons name="lightbulb-outline" size={20} color="#f59e0b" />
-                      <Text style={styles.hintText}>{step.image_hint}</Text>
+                  {expandedStep === step.step_number && (
+                    <View style={styles.stepBody}>
+                      <Text style={styles.stepDescription}>{step.description}</Text>
+                      
+                      {step.image_hint && (
+                        <View style={styles.hintBox}>
+                          <MaterialIcons name="lightbulb" size={18} color="#f59e0b" />
+                          <Text style={styles.hintText}>{step.image_hint}</Text>
+                        </View>
+                      )}
+                      
+                      {step.warning && (
+                        <View style={styles.warningBox}>
+                          <MaterialIcons name="warning" size={18} color="#ef4444" />
+                          <Text style={styles.warningText}>{step.warning}</Text>
+                        </View>
+                      )}
                     </View>
                   )}
-                  
-                  {step.warning && (
-                    <View style={styles.stepWarningCard}>
-                      <MaterialIcons name="warning" size={20} color="#ef4444" />
-                      <Text style={styles.stepWarningText}>{step.warning}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
+              </View>
             </View>
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff',
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -289,7 +280,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
+    color: '#666',
   },
   errorContainer: {
     flex: 1,
@@ -302,161 +293,181 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ef4444',
   },
+  imageHeaderContainer: {
+      height: 300,
+      width: '100%',
+      position: 'relative',
+  },
+  projectImageHeader: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#e5e7eb',
+  },
+  backButton: {
+      position: 'absolute',
+      top: 50,
+      left: 20,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
   header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginBottom: 8,
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   projectTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#333',
     marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  metaRow: {
+      flexDirection: 'row',
+      gap: 16,
+      marginBottom: 16,
+  },
+  metaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+  },
+  metaText: {
+      fontSize: 14,
+      color: '#666',
+      fontWeight: '500',
   },
   arButton: {
-    backgroundColor: '#8b5cf6',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: 8,
     gap: 8,
   },
   arButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    color: HOUZZ_GREEN,
+    fontSize: 14,
     fontWeight: '600',
   },
   section: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginBottom: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
-  itemCard: {
+  itemRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
     gap: 12,
   },
   itemContent: {
     flex: 1,
   },
   itemName: {
-    fontSize: 15,
-    color: '#111827',
-    fontWeight: '500',
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 22,
   },
   itemNameOwned: {
-    color: '#9ca3af',
+    color: '#aaa',
     textDecorationLine: 'line-through',
   },
   itemCost: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#888',
     marginTop: 2,
   },
-  mockPurchaseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#dbeafe',
-    borderRadius: 8,
-    marginTop: 8,
-    gap: 8,
+  stepContainer: {
+      flexDirection: 'row',
   },
-  mockPurchaseText: {
-    fontSize: 14,
-    color: '#1e40af',
-    fontWeight: '500',
+  stepLeftColumn: {
+      alignItems: 'center',
+      width: 40,
+      marginRight: 12,
   },
-  stepCard: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
+  stepCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#f0f0f0',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 4,
   },
-  stepHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
+  stepCircleActive: {
+      backgroundColor: HOUZZ_GREEN,
   },
   stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#10b981',
-    alignItems: 'center',
-    justifyContent: 'center',
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#666',
   },
-  stepNumberText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  stepNumberActive: {
+      color: '#fff',
+  },
+  stepLine: {
+      width: 2,
+      flex: 1,
+      backgroundColor: '#f0f0f0',
+      marginBottom: 4,
+  },
+  stepRightColumn: {
+      flex: 1,
+      paddingBottom: 24,
+  },
+  stepHeader: {
+      minHeight: 32,
+      justifyContent: 'center',
   },
   stepTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#333',
   },
-  stepContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  stepBody: {
+      marginTop: 8,
   },
   stepDescription: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
-    marginBottom: 12,
+      fontSize: 15,
+      color: '#555',
+      lineHeight: 24,
+      marginBottom: 12,
   },
-  hintCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fef3c7',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    gap: 8,
+  hintBox: {
+      flexDirection: 'row',
+      backgroundColor: '#fffbeb',
+      padding: 12,
+      borderRadius: 8,
+      gap: 8,
+      marginBottom: 8,
   },
   hintText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#92400e',
-    lineHeight: 18,
+      flex: 1,
+      fontSize: 13,
+      color: '#92400e',
+      lineHeight: 18,
   },
-  stepWarningCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fee2e2',
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
+  warningBox: {
+      flexDirection: 'row',
+      backgroundColor: '#fef2f2',
+      padding: 12,
+      borderRadius: 8,
+      gap: 8,
   },
-  stepWarningText: {
-  projectImageHeader: {
-    width: '100%',
-    height: 250,
-    backgroundColor: '#e5e7eb',
-  },
-    flex: 1,
-    fontSize: 13,
-    color: '#991b1b',
-    fontWeight: '500',
-    lineHeight: 18,
+  warningText: {
+      flex: 1,
+      fontSize: 13,
+      color: '#991b1b',
+      lineHeight: 18,
   },
 });
