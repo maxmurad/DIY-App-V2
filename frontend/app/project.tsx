@@ -448,6 +448,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stepWarningText: {
+  projectImageHeader: {
+    width: '100%',
+    height: 250,
+    backgroundColor: '#e5e7eb',
+  },
     flex: 1,
     fontSize: 13,
     color: '#991b1b',
