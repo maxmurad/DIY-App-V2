@@ -327,7 +327,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   editorialSection: {
-    padding: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
     backgroundColor: '#f9f9f9',
   },
   stepRow: {
