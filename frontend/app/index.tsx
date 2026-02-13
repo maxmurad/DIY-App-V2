@@ -110,11 +110,7 @@ export default function HomeScreen() {
         </View>
 
         {/* HOW IT WORKS (Styled like Houzz "Editorial") */}
-        <TouchableOpacity 
-          style={styles.editorialSection} 
-          onPress={() => router.push('/camera')}
-          activeOpacity={0.9}
-        >
+        <View style={styles.editorialSection}>
           <Text style={styles.sectionTitle}>How It Works</Text>
           
           <View style={styles.stepRow}>
@@ -146,7 +142,7 @@ export default function HomeScreen() {
               <Text style={styles.stepDesc}>Follow step-by-step interactive guides.</Text>
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
 
         {/* RECENT PROJECTS CAROUSEL */}
         {recentProjects.length > 0 && (
