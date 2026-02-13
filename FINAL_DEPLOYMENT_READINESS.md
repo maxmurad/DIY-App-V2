@@ -39,10 +39,10 @@ All critical systems are operational and properly configured. The application is
 **Environment Variables Configured:**
 ```
 Frontend:
-✅ EXPO_TUNNEL_SUBDOMAIN=fixitpro-85
-✅ EXPO_PACKAGER_HOSTNAME=https://fixitpro-85.preview.emergentagent.com
+✅ EXPO_TUNNEL_SUBDOMAIN=fixmyhome-45
+✅ EXPO_PACKAGER_HOSTNAME=https://fixmyhome-45.preview.emergentagent.com
 ✅ EXPO_PACKAGER_PROXY_URL=https://goofy-wilbur-2.ngrok.io
-✅ EXPO_PUBLIC_BACKEND_URL=https://fixitpro-85.preview.emergentagent.com
+✅ EXPO_PUBLIC_BACKEND_URL=https://fixmyhome-45.preview.emergentagent.com
 ✅ EXPO_USE_FAST_RESOLVER="1"
 ✅ METRO_CACHE_ROOT=/app/frontend/.metro-cache
 

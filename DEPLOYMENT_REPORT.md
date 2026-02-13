@@ -34,9 +34,9 @@ All required services are running and healthy:
 
 **Frontend (.env):**
 ```
-✅ EXPO_TUNNEL_SUBDOMAIN=fixitpro-85
-✅ EXPO_PACKAGER_HOSTNAME=https://fixitpro-85.preview.emergentagent.com
-✅ EXPO_PUBLIC_BACKEND_URL=https://fixitpro-85.preview.emergentagent.com
+✅ EXPO_TUNNEL_SUBDOMAIN=fixmyhome-45
+✅ EXPO_PACKAGER_HOSTNAME=https://fixmyhome-45.preview.emergentagent.com
+✅ EXPO_PUBLIC_BACKEND_URL=https://fixmyhome-45.preview.emergentagent.com
 ✅ EXPO_USE_FAST_RESOLVER="1"
 ✅ METRO_CACHE_ROOT=/app/frontend/.metro-cache
 ```
@@ -170,8 +170,8 @@ All required services are running and healthy:
 ### For Emergent Platform:
 1. All services are supervisor-managed and will auto-start
 2. MongoDB is pre-configured and running
-3. Frontend accessible at: https://fixitpro-85.preview.emergentagent.com
-4. Backend API at: https://fixitpro-85.preview.emergentagent.com/api/
+3. Frontend accessible at: https://fixmyhome-45.preview.emergentagent.com
+4. Backend API at: https://fixmyhome-45.preview.emergentagent.com/api/
 
 ### Testing on Mobile Devices:
 1. Download Expo Go app on iOS/Android

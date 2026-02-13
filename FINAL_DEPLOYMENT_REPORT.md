@@ -31,10 +31,10 @@ After three comprehensive health checks and issue resolution, the DIY Home Repai
 
 **Frontend (.env) - 6 variables configured:**
 ```
-✓ EXPO_TUNNEL_SUBDOMAIN=fixitpro-85
-✓ EXPO_PACKAGER_HOSTNAME=https://fixitpro-85.preview.emergentagent.com
+✓ EXPO_TUNNEL_SUBDOMAIN=fixmyhome-45
+✓ EXPO_PACKAGER_HOSTNAME=https://fixmyhome-45.preview.emergentagent.com
 ✓ EXPO_PACKAGER_PROXY_URL=https://goofy-wilbur-2.ngrok.io
-✓ EXPO_PUBLIC_BACKEND_URL=https://fixitpro-85.preview.emergentagent.com
+✓ EXPO_PUBLIC_BACKEND_URL=https://fixmyhome-45.preview.emergentagent.com
 ✓ EXPO_USE_FAST_RESOLVER="1"
 ✓ METRO_CACHE_ROOT=/app/frontend/.metro-cache
 ```
@@ -217,8 +217,8 @@ The application is configured for automatic deployment via Supervisor:
    - MongoDB: Managed by supervisor
 
 2. **Access URLs:**
-   - Frontend: https://fixitpro-85.preview.emergentagent.com
-   - Backend API: https://fixitpro-85.preview.emergentagent.com/api/
+   - Frontend: https://fixmyhome-45.preview.emergentagent.com
+   - Backend API: https://fixmyhome-45.preview.emergentagent.com/api/
    - Expo QR Code: Available in tunnel output
 
 ### Testing on Mobile Devices

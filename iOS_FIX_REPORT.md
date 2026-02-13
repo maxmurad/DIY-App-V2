@@ -63,7 +63,7 @@ After applying the fix, please test the app again:
 2. **Reopen Expo Go**
    - Launch Expo Go app fresh
    - Scan QR code from preview URL again
-   - OR manually enter: https://fixitpro-85.preview.emergentagent.com
+   - OR manually enter: https://fixmyhome-45.preview.emergentagent.com
 
 3. **Wait for Bundle to Load**
    - First load may take 10-30 seconds

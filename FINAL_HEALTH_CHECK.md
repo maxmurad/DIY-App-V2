@@ -285,8 +285,8 @@ open ios/DIYHomeRepair.xcworkspace
 
 ## 📱 Access Information
 
-**Preview URL:** https://fixitpro-85.preview.emergentagent.com  
-**Backend API:** https://fixitpro-85.preview.emergentagent.com/api/  
+**Preview URL:** https://fixmyhome-45.preview.emergentagent.com  
+**Backend API:** https://fixmyhome-45.preview.emergentagent.com/api/  
 **GitHub:** https://github.com/maxmurad/DIY-AI  
 **EAS Dashboard:** https://expo.dev/accounts/maxmurad/projects/diy-home-repair
 
