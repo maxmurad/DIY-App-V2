@@ -94,11 +94,14 @@ export default function ProjectScreen() {
   };
 
   const openARView = () => {
-    if (Platform.OS !== 'ios') {
-      Alert.alert('AR Not Available', 'AR features are currently only available on iOS devices.');
-      return;
-    }
-    Alert.alert('AR Feature', 'AR overlay guidance will be available in the next update. This feature will show 3D projections to guide your repair.');
+    // AR Guide works on both platforms since it's a guided overlay, not true AR
+    router.push({
+      pathname: '/ar-guide',
+      params: { 
+        steps: JSON.stringify(project?.steps || []),
+        title: project?.title || 'Repair Guide'
+      }
+    });
   };
 
   if (loading) {
