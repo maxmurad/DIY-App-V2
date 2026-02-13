@@ -109,26 +109,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* RECENT PROJECTS CAROUSEL */}
-        {recentProjects.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Your Projects</Text>
-              <TouchableOpacity onPress={() => router.push('/history')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={recentProjects}
-              renderItem={renderProjectCard}
-              keyExtractor={item => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.carouselContent}
-            />
-          </View>
-        )}
-
         {/* HOW IT WORKS (Styled like Houzz "Editorial") */}
         <View style={styles.editorialSection}>
           <Text style={styles.sectionTitle}>How It Works</Text>
@@ -163,6 +143,26 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* RECENT PROJECTS CAROUSEL */}
+        {recentProjects.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Your Projects</Text>
+              <TouchableOpacity onPress={() => router.push('/history')}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={recentProjects}
+              renderItem={renderProjectCard}
+              keyExtractor={item => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carouselContent}
+            />
+          </View>
+        )}
 
         {/* FOOTER */}
         <View style={styles.footer}>
