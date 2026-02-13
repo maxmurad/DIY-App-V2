@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 20,
+    marginBottom: 16,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   categoryGrid: {
