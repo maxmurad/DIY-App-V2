@@ -248,7 +248,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   section: {
-    paddingVertical: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
