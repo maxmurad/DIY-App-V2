@@ -113,35 +113,37 @@ export default function HomeScreen() {
         <View style={styles.editorialSection}>
           <Text style={styles.sectionTitle}>How It Works</Text>
           
-          <View style={styles.stepRow}>
-            <View style={styles.stepNumberContainer}>
-              <Text style={styles.stepNumber}>1</Text>
+          <TouchableOpacity onPress={() => router.push('/camera')} activeOpacity={0.9}>
+            <View style={styles.stepRow}>
+              <View style={styles.stepNumberContainer}>
+                <Text style={styles.stepNumber}>1</Text>
+              </View>
+              <View style={styles.stepTextContainer}>
+                <Text style={styles.stepTitle}>Capture the Issue</Text>
+                <Text style={styles.stepDesc}>Take a photo/video of what needs fixing.</Text>
+              </View>
             </View>
-            <View style={styles.stepTextContainer}>
-              <Text style={styles.stepTitle}>Capture the Issue</Text>
-              <Text style={styles.stepDesc}>Take a photo/video of what needs fixing.</Text>
-            </View>
-          </View>
 
-          <View style={styles.stepRow}>
-            <View style={styles.stepNumberContainer}>
-              <Text style={styles.stepNumber}>2</Text>
+            <View style={styles.stepRow}>
+              <View style={styles.stepNumberContainer}>
+                <Text style={styles.stepNumber}>2</Text>
+              </View>
+              <View style={styles.stepTextContainer}>
+                <Text style={styles.stepTitle}>AI Diagnosis</Text>
+                <Text style={styles.stepDesc}>Get instant identification & solution.</Text>
+              </View>
             </View>
-            <View style={styles.stepTextContainer}>
-              <Text style={styles.stepTitle}>AI Diagnosis</Text>
-              <Text style={styles.stepDesc}>Get instant identification & solution.</Text>
-            </View>
-          </View>
 
-          <View style={styles.stepRow}>
-            <View style={styles.stepNumberContainer}>
-              <Text style={styles.stepNumber}>3</Text>
+            <View style={styles.stepRow}>
+              <View style={styles.stepNumberContainer}>
+                <Text style={styles.stepNumber}>3</Text>
+              </View>
+              <View style={styles.stepTextContainer}>
+                <Text style={styles.stepTitle}>Repair with Confidence</Text>
+                <Text style={styles.stepDesc}>Follow step-by-step interactive guides.</Text>
+              </View>
             </View>
-            <View style={styles.stepTextContainer}>
-              <Text style={styles.stepTitle}>Repair with Confidence</Text>
-              <Text style={styles.stepDesc}>Follow step-by-step interactive guides.</Text>
-            </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* RECENT PROJECTS CAROUSEL */}
