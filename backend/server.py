@@ -327,36 +327,59 @@ async def diagnose_upload(
     description: str = Form(default=""),
     thumbnail_base64: str = Form(default="")
 ):
-    """Analyze an uploaded file (video/image) and create a repair project"""
+    """Analyze an uploaded file (video/image) and create a repair project.
+    
+    This endpoint processes videos and images in-memory without saving to disk,
+    making it compatible with stateless deployments like Render.com.
+    """
     try:
+        logger.info(f"Received upload: filename={file.filename}, content_type={file.content_type}, description_length={len(description)}, thumbnail_provided={bool(thumbnail_base64)}")
+        
         # Read file content
         content_bytes = await file.read()
-        mime_type = file.content_type
+        mime_type = file.content_type or "application/octet-stream"
+        
+        logger.info(f"File read: {len(content_bytes)} bytes, mime_type={mime_type}")
         
         # Determine if video or image
         is_video = mime_type.startswith("video")
         
-        # Create GenAI part
+        # Create GenAI part for AI analysis
         content_part = types.Part.from_bytes(data=content_bytes, mime_type=mime_type)
         
-        # Analyze
+        # Analyze with AI
+        logger.info("Starting AI analysis...")
         analysis = await analyze_repair_with_upload(content_part, description)
+        logger.info(f"AI analysis complete: {analysis.get('title', 'No title')}")
         
-        # Handle Base64 storage
+        # Helper function to normalize base64 data (ensure single prefix)
+        def normalize_base64(data: str) -> str:
+            if not data:
+                return ""
+            # Strip existing prefix if present
+            if "base64," in data:
+                data = data.split("base64,")[1]
+            # Add proper prefix
+            return f"data:image/jpeg;base64,{data}"
+        
+        # Handle image/thumbnail storage
         stored_image_base64 = ""
+        stored_thumbnail_base64 = ""
+        
         if is_video:
-            stored_image_base64 = thumbnail_base64 # Use thumbnail for video projects
+            # For videos, use the provided thumbnail
+            stored_image_base64 = normalize_base64(thumbnail_base64)
+            stored_thumbnail_base64 = stored_image_base64
         else:
-             if thumbnail_base64:
-                 stored_image_base64 = thumbnail_base64
-             else:
-                 stored_image_base64 = base64.b64encode(content_bytes).decode('utf-8')
-                 
-        # Ensure base64 prefix
-        if stored_image_base64 and not stored_image_base64.startswith("data:"):
-             stored_image_base64 = f"data:image/jpeg;base64,{stored_image_base64}"
+            # For images, use thumbnail if provided, otherwise encode the uploaded image
+            if thumbnail_base64:
+                stored_image_base64 = normalize_base64(thumbnail_base64)
+            else:
+                img_b64 = base64.b64encode(content_bytes).decode('utf-8')
+                stored_image_base64 = f"data:image/jpeg;base64,{img_b64}"
+            stored_thumbnail_base64 = stored_image_base64
 
-        # Create materials/tools/steps (Reuse logic - could be extracted)
+        # Create materials/tools/steps
         materials = [
             MaterialTool(name=m["name"], category="material", estimated_cost=m.get("estimated_cost", "varies"))
             for m in analysis.get("materials", [])
@@ -383,8 +406,8 @@ async def diagnose_upload(
             skill_level=skill_level,
             skill_level_name=get_skill_level_name(skill_level),
             estimated_time=analysis.get("estimated_time", "1-2 hours"),
-            image_base64=stored_image_base64, # Used for Detail View
-            thumbnail_base64=thumbnail_base64 if thumbnail_base64 else stored_image_base64, # Used for List View
+            image_base64=stored_image_base64,
+            thumbnail_base64=stored_thumbnail_base64,
             hardware_identified=analysis.get("hardware_identified", "Unknown"),
             issue_type=analysis.get("issue_type", "General repair"),
             steps=steps,
@@ -397,8 +420,10 @@ async def diagnose_upload(
         logger.info(f"Project created via upload: {project.id}")
         return ProjectResponse(project=project)
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Diagnosis upload error: {str(e)}")
+        logger.error(f"Diagnosis upload error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to diagnose: {str(e)}")
 
 @api_router.get("/projects", response_model=ProjectListResponse)
