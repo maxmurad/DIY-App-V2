@@ -96,7 +96,13 @@ export default function HistoryScreen() {
       <View style={styles.imageContainer}>
         {item.thumbnail_base64 || item.image_base64 ? (
           <Image
-            source={{ uri: item.thumbnail_base64 || (item.image_base64 ? `data:image/jpeg;base64,${item.image_base64}` : undefined) }}
+            source={{ 
+              uri: (() => {
+                const img = item.thumbnail_base64 || item.image_base64;
+                if (!img) return undefined;
+                return img.startsWith('data:') ? img : `data:image/jpeg;base64,${img}`;
+              })() 
+            }}
             style={styles.projectImage}
           />
         ) : (
