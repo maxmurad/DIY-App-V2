@@ -76,7 +76,7 @@ export default function DiagnosisScreen() {
         {/* Image Preview */}
         <View style={styles.imageContainer}>
             <Image 
-            source={{ uri: `data:image/jpeg;base64,${project.image_base64}` }} 
+            source={{ uri: project.image_base64.startsWith('data:') ? project.image_base64 : `data:image/jpeg;base64,${project.image_base64}` }} 
             style={styles.headerImage}
             />
             <View style={styles.overlay} />
