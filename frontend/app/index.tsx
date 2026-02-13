@@ -1,229 +1,368 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ImageBackground, Image, Dimensions, StatusBar, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import axios from 'axios';
+
+const { width } = Dimensions.get('window');
+const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+// Houzz-like Green
+const HOUZZ_GREEN = '#3dae2b'; 
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [recentProjects, setRecentProjects] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchRecentProjects();
+  }, []);
+
+  const fetchRecentProjects = async () => {
+    try {
+      // Fetch only first 5 for the carousel
+      const response = await axios.get(`${EXPO_PUBLIC_BACKEND_URL}/api/projects`);
+      if (response.data && response.data.projects) {
+        setRecentProjects(response.data.projects.slice(0, 5));
+      }
+    } catch (error) {
+      console.log("Could not fetch recent projects for home screen", error);
+    }
+  };
+
+  const renderProjectCard = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={styles.projectCard}
+      onPress={() => router.push({ pathname: '/project', params: { projectId: item.id } })}
+    >
+      <Image 
+        source={{ uri: item.thumbnail_base64 || (item.image_base64.startsWith('data:') ? item.image_base64 : `data:image/jpeg;base64,${item.image_base64}`) }} 
+        style={styles.projectCardImage} 
+      />
+      <View style={styles.projectCardOverlay}>
+        <Text style={styles.projectCardTitle} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.projectCardSubtitle} numberOfLines={1}>{item.issue_type}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <MaterialIcons name="home-repair-service" size={48} color="#10b981" />
-          <Text style={styles.title}>DIY Home Repair</Text>
-          <Text style={styles.subtitle}>Your AI-Powered Repair Assistant</Text>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* HERO SECTION */}
+        <ImageBackground
+          source={{ uri: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80' }} // High quality interior
+          style={styles.heroImage}
+        >
+          <LinearGradient
+            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
+            style={styles.heroGradient}
+          >
+            <SafeAreaView edges={['top']} style={styles.heroSafeArea}>
+              <View style={styles.heroContent}>
+                <Text style={styles.heroTitle}>The New Way to Repair Your Home</Text>
+                <Text style={styles.heroSubtitle}>AI-powered diagnosis for every DIY project.</Text>
+                
+                <TouchableOpacity 
+                  style={styles.searchBarButton}
+                  onPress={() => router.push('/camera')}
+                  activeOpacity={0.9}
+                >
+                  <MaterialIcons name="search" size={24} color="#666" />
+                  <Text style={styles.searchBarText}>What needs fixing?</Text>
+                  <View style={styles.cameraIconCircle}>
+                    <MaterialIcons name="photo-camera" size={20} color="#fff" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+          </LinearGradient>
+        </ImageBackground>
+
+        {/* BROWSE BY CATEGORY */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Browse by Category</Text>
+          <View style={styles.categoryGrid}>
+            {[
+              { name: 'Plumbing', icon: 'faucet', library: 'FontAwesome5' },
+              { name: 'Electrical', icon: 'bolt', library: 'MaterialIcons' },
+              { name: 'Walls', icon: 'format-paint', library: 'MaterialIcons' },
+              { name: 'Appliances', icon: 'blender', library: 'MaterialIcons' },
+              { name: 'Flooring', icon: 'layers', library: 'MaterialIcons' },
+              { name: 'Exterior', icon: 'house-siding', library: 'MaterialIcons' },
+            ].map((cat, index) => (
+              <TouchableOpacity key={index} style={styles.categoryItem} onPress={() => router.push('/camera')}>
+                <View style={styles.categoryIconContainer}>
+                  {cat.library === 'FontAwesome5' ? (
+                    <FontAwesome5 name={cat.icon} size={24} color="#444" />
+                  ) : (
+                    <MaterialIcons name={cat.icon as any} size={28} color="#444" />
+                  )}
+                </View>
+                <Text style={styles.categoryName}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* Main Action Button */}
-        <TouchableOpacity 
-          style={styles.mainButton}
-          onPress={() => router.push('/camera')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.mainButtonContent}>
-            <MaterialIcons name="photo-camera" size={32} color="#fff" />
-            <Text style={styles.mainButtonText}>Start New Repair</Text>
-            <Text style={styles.mainButtonSubtext}>Take a photo or upload image</Text>
+        {/* RECENT PROJECTS CAROUSEL */}
+        {recentProjects.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Your Projects</Text>
+              <TouchableOpacity onPress={() => router.push('/history')}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={recentProjects}
+              renderItem={renderProjectCard}
+              keyExtractor={item => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carouselContent}
+            />
           </View>
-        </TouchableOpacity>
+        )}
 
-        {/* Feature Cards */}
-        <View style={styles.featuresContainer}>
+        {/* HOW IT WORKS (Styled like Houzz "Editorial") */}
+        <View style={styles.editorialSection}>
           <Text style={styles.sectionTitle}>How It Works</Text>
           
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <MaterialIcons name="photo-camera" size={28} color="#10b981" />
+          <View style={styles.stepRow}>
+            <View style={styles.stepNumberContainer}>
+              <Text style={styles.stepNumber}>1</Text>
             </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>1. Capture the Issue</Text>
-              <Text style={styles.featureText}>Take a photo/video of what needs fixing</Text>
-            </View>
-          </View>
-
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <MaterialIcons name="auto-fix-high" size={28} color="#10b981" />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>2. AI Diagnosis</Text>
-              <Text style={styles.featureText}>Get instant analysis and identification</Text>
+            <View style={styles.stepTextContainer}>
+              <Text style={styles.stepTitle}>Capture the Issue</Text>
+              <Text style={styles.stepDesc}>Take a photo/video of what needs fixing.</Text>
             </View>
           </View>
 
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <MaterialIcons name="build" size={28} color="#10b981" />
+          <View style={styles.stepRow}>
+            <View style={styles.stepNumberContainer}>
+              <Text style={styles.stepNumber}>2</Text>
             </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>3. Step-by-Step Guide</Text>
-              <Text style={styles.featureText}>Follow detailed repair instructions</Text>
+            <View style={styles.stepTextContainer}>
+              <Text style={styles.stepTitle}>AI Diagnosis</Text>
+              <Text style={styles.stepDesc}>Get instant identification & solution.</Text>
             </View>
           </View>
 
-          {Platform.OS === 'ios' && (
-            <View style={styles.featureCard}>
-              <View style={styles.featureIcon}>
-                <MaterialIcons name="view-in-ar" size={28} color="#10b981" />
-              </View>
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>4. AR Guidance (iOS)</Text>
-                <Text style={styles.featureText}>See overlay guidance in real-time</Text>
-              </View>
+          <View style={styles.stepRow}>
+            <View style={styles.stepNumberContainer}>
+              <Text style={styles.stepNumber}>3</Text>
             </View>
-          )}
+            <View style={styles.stepTextContainer}>
+              <Text style={styles.stepTitle}>Repair with Confidence</Text>
+              <Text style={styles.stepDesc}>Follow step-by-step interactive guides.</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Quick Access */}
-        <View style={styles.quickAccessContainer}>
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => router.push('/history')}
-          >
-            <MaterialIcons name="history" size={24} color="#10b981" />
-            <Text style={styles.secondaryButtonText}>My Projects</Text>
-          </TouchableOpacity>
+        {/* FOOTER */}
+        <View style={styles.footer}>
+          <MaterialIcons name="home-repair-service" size={32} color="#ccc" />
+          <Text style={styles.footerText}>DIY App v2.0</Text>
         </View>
 
-        {/* Info Banner */}
-        <View style={styles.infoBanner}>
-          <MaterialIcons name="info" size={20} color="#3b82f6" />
-          <Text style={styles.infoBannerText}>
-            Supports skill levels from Novice to Expert with safety warnings
-          </Text>
-        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff',
   },
   scrollContent: {
-    padding: 20,
+    paddingBottom: 40,
   },
-  header: {
+  heroImage: {
+    width: '100%',
+    height: 450,
+  },
+  heroGradient: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  heroSafeArea: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  heroContent: {
+    paddingHorizontal: 24,
     alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 36,
+    fontWeight: '800', // Serif-like heavy weight
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', // Attempt serif font
+  },
+  heroSubtitle: {
+    fontSize: 18,
+    color: '#eee',
+    textAlign: 'center',
     marginBottom: 32,
-    paddingTop: 20,
+    fontWeight: '500',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginTop: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  mainButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 32,
+  searchBarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 5,
   },
-  mainButtonContent: {
+  searchBarText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#666',
+    marginLeft: 12,
+  },
+  cameraIconCircle: {
+    backgroundColor: HOUZZ_GREEN,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  mainButtonText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 12,
-  },
-  mainButtonSubtext: {
-    fontSize: 14,
-    color: '#d1fae5',
-    marginTop: 4,
-  },
-  featuresContainer: {
-    marginBottom: 24,
+  section: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  categoryItem: {
+    width: '31%', // 3 columns
+    aspectRatio: 1,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryIconContainer: {
+    marginBottom: 8,
+  },
+  categoryName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  featureCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#d1fae5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  featureText: {
+  seeAllText: {
+    color: HOUZZ_GREEN,
     fontSize: 14,
-    color: '#6b7280',
+    fontWeight: '600',
   },
-  quickAccessContainer: {
+  carouselContent: {
+    paddingRight: 20,
+  },
+  projectCard: {
+    width: 200,
+    height: 150,
+    marginRight: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#eee',
+  },
+  projectCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  projectCardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 12,
+  },
+  projectCardTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  projectCardSubtitle: {
+    color: '#ddd',
+    fontSize: 12,
+  },
+  editorialSection: {
+    padding: 24,
+    backgroundColor: '#f9f9f9',
+  },
+  stepRow: {
+    flexDirection: 'row',
     marginBottom: 24,
   },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#10b981',
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#10b981',
-    marginLeft: 8,
-  },
-  infoBanner: {
-    backgroundColor: '#dbeafe',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
+  stepNumberContainer: {
+    marginRight: 16,
     alignItems: 'center',
   },
-  infoBannerText: {
+  stepNumber: {
+    fontSize: 48,
+    fontWeight: '200',
+    color: '#ddd',
+    lineHeight: 48,
+  },
+  stepTextContainer: {
     flex: 1,
-    fontSize: 13,
-    color: '#1e40af',
-    marginLeft: 8,
+    justifyContent: 'center',
+  },
+  stepTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  stepDesc: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  footer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  footerText: {
+    marginTop: 12,
+    color: '#999',
+    fontSize: 14,
   },
 });
