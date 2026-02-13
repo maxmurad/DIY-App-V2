@@ -3844,10 +3844,10 @@ expo-av@~16.0.4:
   resolved "https://registry.yarnpkg.com/expo-av/-/expo-av-16.0.8.tgz#b1671127f3b2ecaeb9c69fc2301cf791d4504dd6"
   integrity sha512-cmVPftGR/ca7XBgs7R6ky36lF3OC0/MM/lpgX/yXqfv0jASTsh7AYX9JxHCwFmF+Z6JEB1vne9FDx4GiLcGreQ==
 
-expo-blur@~14.1.5:
-  version "14.1.5"
-  resolved "https://registry.npmjs.org/expo-blur/-/expo-blur-14.1.5.tgz"
-  integrity sha512-CCLJHxN4eoAl06ESKT3CbMasJ98WsjF9ZQEJnuxtDb9ffrYbZ+g9ru84fukjNUOTtc8A8yXE5z8NgY1l0OMrmQ==
+expo-blur@^15.0.8:
+  version "15.0.8"
+  resolved "https://registry.yarnpkg.com/expo-blur/-/expo-blur-15.0.8.tgz#846cea275a6644639c5c338987b4cca54cf93eca"
+  integrity sha512-rWyE1NBRZEu9WD+X+5l7gyPRszw7n12cW3IRNAb5i6KFzaBp8cxqT5oeaphJapqURvcqhkOZn2k5EtBSbsuU7w==
 
 expo-camera@^17.0.10:
   version "17.0.10"
