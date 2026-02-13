@@ -128,6 +128,13 @@ export default function ProjectScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Project Image Header */}
+        <Image
+          source={{ uri: project.image_base64.startsWith('data:') ? project.image_base64 : `data:image/jpeg;base64,${project.image_base64}` }}
+          style={styles.projectImageHeader}
+          resizeMode="cover"
+        />
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.projectTitle}>{project.title}</Text>
