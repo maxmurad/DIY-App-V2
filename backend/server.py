@@ -509,6 +509,167 @@ async def delete_project(project_id: str):
         logger.error(f"Failed to delete project: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete project: {str(e)}")
 
+# ============ AI Image Generation (Imagen) ============
+
+async def generate_step_image(step_title: str, step_description: str, project_title: str, image_hint: str = None) -> Optional[str]:
+    """Generate an instructional image for a repair step using Imagen"""
+    try:
+        if not client_genai:
+            logger.warning("GenAI client not initialized")
+            return None
+        
+        # Craft a detailed prompt for instructional illustration
+        hint_text = f" Focus on: {image_hint}." if image_hint else ""
+        prompt = f"""Technical instructional illustration for DIY home repair.
+Task: {project_title}
+Step: {step_title}
+Action: {step_description[:200]}
+{hint_text}
+Style: Clean, photorealistic hands-on tutorial image showing the repair action clearly. 
+Well-lit, professional instructional photo style. No text overlays."""
+
+        logger.info(f"Generating image for step: {step_title}")
+        
+        # Use Imagen to generate image
+        response = client_genai.models.generate_images(
+            model='imagen-3.0-generate-002',
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="4:3",
+                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE"
+            )
+        )
+        
+        if response.generated_images and len(response.generated_images) > 0:
+            # Convert PIL Image to base64
+            generated_image = response.generated_images[0]
+            img = generated_image.image
+            
+            # Resize for mobile optimization
+            img.thumbnail((800, 600), Image.Resampling.LANCZOS)
+            
+            # Convert to base64
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG", quality=80)
+            img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            
+            return f"data:image/jpeg;base64,{img_base64}"
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Image generation error: {str(e)}")
+        return None
+
+class GenerateStepImagesRequest(BaseModel):
+    step_id: str
+
+class StepImagesResponse(BaseModel):
+    step_id: str
+    images: List[str]
+    success: bool
+    message: str = ""
+
+@api_router.post("/projects/{project_id}/steps/{step_id}/generate-images", response_model=StepImagesResponse)
+async def generate_step_images(project_id: str, step_id: str):
+    """Generate AI images for a specific step (on-demand)"""
+    try:
+        # Fetch the project
+        project_data = await db.projects.find_one({"id": project_id})
+        if not project_data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Find the specific step
+        step_data = None
+        step_index = -1
+        for idx, step in enumerate(project_data.get("steps", [])):
+            if step.get("id") == step_id:
+                step_data = step
+                step_index = idx
+                break
+        
+        if not step_data:
+            raise HTTPException(status_code=404, detail="Step not found")
+        
+        # Check if images already exist
+        existing_images = step_data.get("generated_images", [])
+        if existing_images and len(existing_images) > 0:
+            return StepImagesResponse(
+                step_id=step_id,
+                images=existing_images,
+                success=True,
+                message="Images already generated"
+            )
+        
+        # Generate image
+        logger.info(f"Generating images for project {project_id}, step {step_id}")
+        
+        image_base64 = await generate_step_image(
+            step_title=step_data.get("title", ""),
+            step_description=step_data.get("description", ""),
+            project_title=project_data.get("title", ""),
+            image_hint=step_data.get("image_hint", "")
+        )
+        
+        if image_base64:
+            generated_images = [image_base64]
+            
+            # Update the step in database
+            await db.projects.update_one(
+                {"id": project_id, "steps.id": step_id},
+                {"$set": {
+                    "steps.$.generated_images": generated_images,
+                    "steps.$.images_generating": False
+                }}
+            )
+            
+            return StepImagesResponse(
+                step_id=step_id,
+                images=generated_images,
+                success=True,
+                message="Image generated successfully"
+            )
+        else:
+            return StepImagesResponse(
+                step_id=step_id,
+                images=[],
+                success=False,
+                message="Failed to generate image"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Generate step images error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate images: {str(e)}")
+
+@api_router.get("/projects/{project_id}/steps/{step_id}/images", response_model=StepImagesResponse)
+async def get_step_images(project_id: str, step_id: str):
+    """Get generated images for a step (returns cached if available)"""
+    try:
+        project_data = await db.projects.find_one({"id": project_id})
+        if not project_data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        for step in project_data.get("steps", []):
+            if step.get("id") == step_id:
+                images = step.get("generated_images", [])
+                return StepImagesResponse(
+                    step_id=step_id,
+                    images=images,
+                    success=len(images) > 0,
+                    message="Images retrieved" if images else "No images generated yet"
+                )
+        
+        raise HTTPException(status_code=404, detail="Step not found")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get step images error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get images: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
