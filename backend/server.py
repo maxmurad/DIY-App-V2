@@ -544,46 +544,42 @@ Well-lit, professional instructional photo style. No text overlays."""
         if response.generated_images and len(response.generated_images) > 0:
             generated_image = response.generated_images[0]
             
-            # Handle different image formats from Imagen API
             try:
-                # Try to get image data - could be PIL Image or bytes
-                img_data = generated_image.image
+                # The .image property from google-genai should be PIL-compatible
+                # but we need to handle it carefully
+                img_obj = generated_image.image
                 
-                # If it's already a PIL Image
-                if hasattr(img_data, 'save'):
-                    img = img_data
-                # If it's bytes, convert to PIL Image
-                elif isinstance(img_data, bytes):
-                    img = Image.open(io.BytesIO(img_data))
-                # If it has _pil_image attribute
-                elif hasattr(img_data, '_pil_image'):
-                    img = img_data._pil_image
-                # Try to access as property
-                else:
-                    # Get the raw bytes and convert
-                    if hasattr(generated_image, 'image_bytes'):
-                        img = Image.open(io.BytesIO(generated_image.image_bytes))
-                    else:
-                        # Last resort: try to encode directly
-                        img_bytes = img_data if isinstance(img_data, bytes) else bytes(img_data)
-                        img = Image.open(io.BytesIO(img_bytes))
-                
-                # Resize for mobile optimization
-                img.thumbnail((800, 600), Image.Resampling.LANCZOS)
-                
-                # Convert to base64
+                # Try to save directly to BytesIO (works if it's PIL-like)
                 buffered = io.BytesIO()
-                img.save(buffered, format="JPEG", quality=80)
-                img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
                 
-                return f"data:image/jpeg;base64,{img_base64}"
+                # Check if it has a save method (PIL Image or PIL-compatible)
+                if hasattr(img_obj, 'save'):
+                    # Save without resizing first to see if basic save works
+                    img_obj.save(buffered, format="JPEG", quality=80)
+                    img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    return f"data:image/jpeg;base64,{img_base64}"
                 
-            except Exception as img_err:
-                logger.error(f"Image processing error: {str(img_err)}")
-                # Try direct base64 if available
+                # If img_obj has _image_bytes or similar
+                if hasattr(img_obj, '_image_bytes'):
+                    img_base64 = base64.b64encode(img_obj._image_bytes).decode('utf-8')
+                    return f"data:image/png;base64,{img_base64}"
+                
+                # Try to get bytes from the object
+                if hasattr(img_obj, 'data'):
+                    img_base64 = base64.b64encode(img_obj.data).decode('utf-8')
+                    return f"data:image/png;base64,{img_base64}"
+                    
+                # Check if generated_image itself has image_bytes
                 if hasattr(generated_image, 'image_bytes'):
                     img_base64 = base64.b64encode(generated_image.image_bytes).decode('utf-8')
                     return f"data:image/png;base64,{img_base64}"
+                
+                # Last resort - convert to string and log for debugging
+                logger.error(f"Unknown image object type: {type(img_obj)}, dir: {dir(img_obj)}")
+                return None
+                
+            except Exception as img_err:
+                logger.error(f"Image processing error: {str(img_err)}, type: {type(generated_image.image)}")
                 return None
         
         return None
