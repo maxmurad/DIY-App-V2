@@ -241,10 +241,22 @@ export default function ProjectScreen() {
                     onPress={() => setExpandedStep(expandedStep === step.step_number ? null : step.step_number)}
                   >
                     <Text style={styles.stepTitle}>{step.title}</Text>
+                    <MaterialIcons 
+                      name={expandedStep === step.step_number ? "expand-less" : "expand-more"} 
+                      size={24} 
+                      color="#888" 
+                    />
                   </TouchableOpacity>
 
                   {expandedStep === step.step_number && (
                     <View style={styles.stepBody}>
+                      {/* AI Image Slideshow */}
+                      <StepImageSlideshow
+                        projectId={project.id}
+                        stepId={step.id}
+                        stepTitle={step.title}
+                      />
+                      
                       <Text style={styles.stepDescription}>{step.description}</Text>
                       
                       {step.image_hint && (
