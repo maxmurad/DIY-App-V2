@@ -459,12 +459,15 @@ const styles = StyleSheet.create({
   },
   stepHeader: {
       minHeight: 32,
-      justifyContent: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
   },
   stepTitle: {
       fontSize: 16,
       fontWeight: '600',
       color: '#333',
+      flex: 1,
   },
   stepBody: {
       marginTop: 8,
