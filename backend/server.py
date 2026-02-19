@@ -512,7 +512,7 @@ async def delete_project(project_id: str):
 # ============ AI Image Generation (Imagen) ============
 
 async def generate_step_image(step_title: str, step_description: str, project_title: str, image_hint: str = None) -> Optional[str]:
-    """Generate an instructional image for a repair step using Imagen"""
+    """Generate an instructional image for a repair step using Gemini 2.5 Flash Image"""
     try:
         if not client_genai:
             logger.warning("GenAI client not initialized")
@@ -520,68 +520,41 @@ async def generate_step_image(step_title: str, step_description: str, project_ti
         
         # Craft a detailed prompt for instructional illustration
         hint_text = f" Focus on: {image_hint}." if image_hint else ""
-        prompt = f"""Technical instructional illustration for DIY home repair.
+        prompt = f"""Generate a clear, instructional illustration for DIY home repair.
 Task: {project_title}
 Step: {step_title}
 Action: {step_description[:200]}
 {hint_text}
 Style: Clean, photorealistic hands-on tutorial image showing the repair action clearly. 
-Well-lit, professional instructional photo style. No text overlays."""
+Well-lit, professional instructional photo style. Show hands performing the task if applicable."""
 
         logger.info(f"Generating image for step: {step_title}")
         
-        # Use Imagen to generate image
-        response = client_genai.models.generate_images(
-            model='imagen-4.0-generate-001',
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="4:3",
-                safety_filter_level="BLOCK_LOW_AND_ABOVE"
+        # Use Gemini 2.5 Flash for image generation (more reliable)
+        response = client_genai.models.generate_content(
+            model='gemini-2.5-flash-preview-04-17',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE", "TEXT"],
             )
         )
         
-        if response.generated_images and len(response.generated_images) > 0:
-            generated_image = response.generated_images[0]
-            
-            try:
-                # The .image property from google-genai should be PIL-compatible
-                # but we need to handle it carefully
-                img_obj = generated_image.image
-                
-                # Try to save directly to BytesIO (works if it's PIL-like)
-                buffered = io.BytesIO()
-                
-                # Check if it has a save method (PIL Image or PIL-compatible)
-                if hasattr(img_obj, 'save'):
-                    # Save without resizing first to see if basic save works
-                    img_obj.save(buffered, format="JPEG", quality=80)
-                    img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                    return f"data:image/jpeg;base64,{img_base64}"
-                
-                # If img_obj has _image_bytes or similar
-                if hasattr(img_obj, '_image_bytes'):
-                    img_base64 = base64.b64encode(img_obj._image_bytes).decode('utf-8')
-                    return f"data:image/png;base64,{img_base64}"
-                
-                # Try to get bytes from the object
-                if hasattr(img_obj, 'data'):
-                    img_base64 = base64.b64encode(img_obj.data).decode('utf-8')
-                    return f"data:image/png;base64,{img_base64}"
+        # Extract image from response parts
+        if response.candidates and len(response.candidates) > 0:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    # Get base64 data directly
+                    img_data = part.inline_data.data
+                    mime_type = part.inline_data.mime_type or "image/png"
                     
-                # Check if generated_image itself has image_bytes
-                if hasattr(generated_image, 'image_bytes'):
-                    img_base64 = base64.b64encode(generated_image.image_bytes).decode('utf-8')
-                    return f"data:image/png;base64,{img_base64}"
-                
-                # Last resort - convert to string and log for debugging
-                logger.error(f"Unknown image object type: {type(img_obj)}, dir: {dir(img_obj)}")
-                return None
-                
-            except Exception as img_err:
-                logger.error(f"Image processing error: {str(img_err)}, type: {type(generated_image.image)}")
-                return None
+                    if isinstance(img_data, bytes):
+                        img_base64 = base64.b64encode(img_data).decode('utf-8')
+                    else:
+                        img_base64 = img_data
+                    
+                    return f"data:{mime_type};base64,{img_base64}"
         
+        logger.warning("No image generated in response")
         return None
         
     except Exception as e:
