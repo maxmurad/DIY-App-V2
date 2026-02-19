@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import StepImageSlideshow from '../components/StepImageSlideshow';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const HOUZZ_GREEN = '#3dae2b';
@@ -23,6 +24,7 @@ interface InstructionStep {
   description: string;
   warning?: string;
   image_hint?: string;
+  generated_images?: string[];
 }
 
 interface Project {
