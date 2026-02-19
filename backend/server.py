@@ -72,6 +72,8 @@ class InstructionStep(BaseModel):
     description: str
     warning: Optional[str] = None
     image_hint: Optional[str] = None
+    generated_images: List[str] = []  # Base64 encoded AI-generated images
+    images_generating: bool = False   # Flag to show loading state
 
 class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
