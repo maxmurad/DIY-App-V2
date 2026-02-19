@@ -512,7 +512,7 @@ async def delete_project(project_id: str):
 # ============ AI Image Generation (Imagen) ============
 
 async def generate_step_image(step_title: str, step_description: str, project_title: str, image_hint: str = None) -> Optional[str]:
-    """Generate an instructional image for a repair step using Gemini 2.5 Flash Image"""
+    """Generate an instructional image for a repair step using Imagen"""
     try:
         if not client_genai:
             logger.warning("GenAI client not initialized")
@@ -520,41 +520,69 @@ async def generate_step_image(step_title: str, step_description: str, project_ti
         
         # Craft a detailed prompt for instructional illustration
         hint_text = f" Focus on: {image_hint}." if image_hint else ""
-        prompt = f"""Generate a clear, instructional illustration for DIY home repair.
+        prompt = f"""Technical instructional illustration for DIY home repair.
 Task: {project_title}
 Step: {step_title}
 Action: {step_description[:200]}
 {hint_text}
 Style: Clean, photorealistic hands-on tutorial image showing the repair action clearly. 
-Well-lit, professional instructional photo style. Show hands performing the task if applicable."""
+Well-lit, professional instructional photo style. No text overlays."""
 
         logger.info(f"Generating image for step: {step_title}")
         
-        # Use Gemini 2.5 Flash for image generation (more reliable)
-        response = client_genai.models.generate_content(
-            model='gemini-2.5-flash-preview-04-17',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE", "TEXT"],
+        # Use Imagen to generate image
+        response = client_genai.models.generate_images(
+            model='imagen-4.0-generate-001',
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="4:3",
+                safety_filter_level="BLOCK_LOW_AND_ABOVE"
             )
         )
         
-        # Extract image from response parts
-        if response.candidates and len(response.candidates) > 0:
-            for part in response.candidates[0].content.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    # Get base64 data directly
-                    img_data = part.inline_data.data
-                    mime_type = part.inline_data.mime_type or "image/png"
-                    
-                    if isinstance(img_data, bytes):
-                        img_base64 = base64.b64encode(img_data).decode('utf-8')
-                    else:
-                        img_base64 = img_data
-                    
-                    return f"data:{mime_type};base64,{img_base64}"
+        if response.generated_images and len(response.generated_images) > 0:
+            generated_image = response.generated_images[0]
+            
+            try:
+                # Access image bytes via nested property: generated_image.image.image_bytes
+                image_bytes = generated_image.image.image_bytes
+                
+                # Load into PIL Image for optional processing
+                pil_image = Image.open(io.BytesIO(image_bytes))
+                
+                # Resize for mobile optimization
+                pil_image.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                
+                # Convert back to bytes
+                buffered = io.BytesIO()
+                pil_image.save(buffered, format="JPEG", quality=80)
+                img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                
+                return f"data:image/jpeg;base64,{img_base64}"
+                
+            except AttributeError as attr_err:
+                # Fallback: try direct image_bytes on generated_image
+                logger.warning(f"Nested image_bytes not found, trying alternatives: {attr_err}")
+                
+                if hasattr(generated_image, 'image_bytes'):
+                    img_base64 = base64.b64encode(generated_image.image_bytes).decode('utf-8')
+                    return f"data:image/png;base64,{img_base64}"
+                
+                # Try _pil_image (undocumented fallback)
+                if hasattr(generated_image, '_pil_image'):
+                    buffered = io.BytesIO()
+                    generated_image._pil_image.save(buffered, format="JPEG", quality=80)
+                    img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    return f"data:image/jpeg;base64,{img_base64}"
+                
+                logger.error(f"Could not extract image bytes. Available attrs: {dir(generated_image)}")
+                return None
+                
+            except Exception as img_err:
+                logger.error(f"Image processing error: {str(img_err)}")
+                return None
         
-        logger.warning("No image generated in response")
         return None
         
     except Exception as e:
