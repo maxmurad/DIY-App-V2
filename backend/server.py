@@ -511,20 +511,56 @@ async def delete_project(project_id: str):
 
 # ============ AI Image Generation (Imagen) ============
 
-async def generate_step_image(step_title: str, step_description: str, project_title: str, image_hint: str = None) -> Optional[str]:
+async def analyze_image_for_context(image_base64: str) -> str:
+    """Use Gemini to analyze the diagnostic image and extract visual context"""
+    try:
+        if not client_genai or not image_base64:
+            return ""
+        
+        # Remove data URL prefix if present
+        if "base64," in image_base64:
+            image_data = image_base64.split("base64,")[1]
+        else:
+            image_data = image_base64
+        
+        # Create image part for Gemini
+        image_part = types.Part.from_bytes(
+            data=base64.b64decode(image_data),
+            mime_type="image/jpeg"
+        )
+        
+        response = client_genai.models.generate_content(
+            model="gemini-2.5-flash-preview-05-20",
+            contents=[
+                image_part,
+                "Describe this home repair image in detail. Focus on: the specific hardware/fixture (brand style, color, material), the setting (bathroom, kitchen, etc.), visible damage or issues, and surrounding environment. Keep description under 100 words."
+            ]
+        )
+        
+        if response.text:
+            return response.text.strip()
+        return ""
+        
+    except Exception as e:
+        logger.warning(f"Image context analysis failed: {str(e)}")
+        return ""
+
+async def generate_step_image(step_title: str, step_description: str, project_title: str, image_hint: str = None, image_context: str = None) -> Optional[str]:
     """Generate an instructional image for a repair step using Imagen"""
     try:
         if not client_genai:
             logger.warning("GenAI client not initialized")
             return None
         
-        # Craft a detailed prompt for instructional illustration
+        # Build contextual prompt
         hint_text = f" Focus on: {image_hint}." if image_hint else ""
+        context_text = f" Visual context from the actual repair: {image_context[:150]}." if image_context else ""
+        
         prompt = f"""Technical instructional illustration for DIY home repair.
 Task: {project_title}
 Step: {step_title}
 Action: {step_description[:200]}
-{hint_text}
+{hint_text}{context_text}
 Style: Clean, photorealistic hands-on tutorial image showing the repair action clearly. 
 Well-lit, professional instructional photo style. No text overlays."""
 
