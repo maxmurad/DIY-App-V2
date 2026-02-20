@@ -665,14 +665,21 @@ async def generate_step_images(project_id: str, step_id: str):
                 message="Images already generated"
             )
         
-        # Generate image
+        # Analyze the original diagnostic image for context
         logger.info(f"Generating images for project {project_id}, step {step_id}")
+        original_image = project_data.get("image_base64", "")
+        image_context = await analyze_image_for_context(original_image) if original_image else ""
         
+        if image_context:
+            logger.info(f"Image context extracted: {image_context[:100]}...")
+        
+        # Generate image with context from original photo
         image_base64 = await generate_step_image(
             step_title=step_data.get("title", ""),
             step_description=step_data.get("description", ""),
             project_title=project_data.get("title", ""),
-            image_hint=step_data.get("image_hint", "")
+            image_hint=step_data.get("image_hint", ""),
+            image_context=image_context
         )
         
         if image_base64:
