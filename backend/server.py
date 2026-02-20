@@ -530,7 +530,7 @@ async def analyze_image_for_context(image_base64: str) -> str:
         )
         
         response = client_genai.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-3-flash-preview",
             contents=[
                 image_part,
                 "Describe this home repair image in detail. Focus on: the specific hardware/fixture (brand style, color, material), the setting (bathroom, kitchen, etc.), visible damage or issues, and surrounding environment. Keep description under 100 words."
