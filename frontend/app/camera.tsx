@@ -197,77 +197,36 @@ export default function CameraScreen() {
       
       setAnalyzing(true);
       try {
-          const formData = new FormData();
+          // Navigate to chat screen with Handy Hank
+          // Pass the image/video and description to start the conversation
           
+          let imageToSend = capturedImage || '';
+          let thumbnailToSend = capturedImage || '';
+          
+          // For videos, we use the thumbnail as both image and thumbnail
           if (capturedVideo) {
-              const videoUri = capturedVideo;
-              const filename = videoUri.split('/').pop() || 'video.mp4';
-              const match = /\.(\w+)$/.exec(filename);
-              const type = match ? `video/${match[1]}` : `video/mp4`;
-              
-              // @ts-ignore: FormData expects specific object structure for React Native
-              formData.append('file', { uri: videoUri, name: filename, type });
-              formData.append('thumbnail_base64', capturedImage || ""); 
-          } else if (capturedImage) {
-              // Convert base64 back to file? Or upload bytes?
-              // Currently backend diagnose-upload expects a file.
-              // We can rely on the old diagnose endpoint? No, let's unify.
-              // Actually, we have the original processed base64. 
-              // We can create a dummy file from it? No.
-              // We should use the existing diagnose endpoint for Images if we want to save bandwidth, 
-              // OR implement base64 handling in diagnose-upload.
-              // BUT, `diagnose-upload` expects `file: UploadFile`.
-              // So for Images, we should probably stick to `diagnose` (JSON) endpoint unless we want to upload the file.
-              // Let's split logic.
+            // capturedImage already contains the video thumbnail
+            thumbnailToSend = capturedImage || '';
+            imageToSend = capturedImage || ''; // Use thumbnail as main image for chat
           }
           
-          formData.append('description', description);
-
-          let response;
-          if (capturedVideo) {
-               response = await axios.post(
-                  `${EXPO_PUBLIC_BACKEND_URL}/api/diagnose-upload`,
-                  formData,
-                  {
-                      headers: {
-                          'Content-Type': 'multipart/form-data',
-                      },
-                      timeout: 180000, // 3 mins for video
-                  }
-              );
-          } else {
-               // Photo flow - keep using JSON endpoint for speed/compatibility
-               // Need to strip prefix
-               const base64Data = capturedImage!.split(',')[1];
-               response = await axios.post(
-                  `${EXPO_PUBLIC_BACKEND_URL}/api/diagnose`,
-                  {
-                      image_base64: base64Data,
-                      description: description || undefined,
-                  },
-                  {
-                      headers: { 'Content-Type': 'application/json' },
-                      timeout: 120000, 
-                  }
-              );
-          }
-
-          if (response.data && response.data.project) {
-            await AsyncStorage.setItem('lastProjectId', response.data.project.id);
-            router.push({
-              pathname: '/diagnosis',
-              params: { projectId: response.data.project.id }
-            });
-          }
+          setAnalyzing(false);
+          
+          router.push({
+            pathname: '/chat',
+            params: { 
+              image_base64: imageToSend,
+              thumbnail_base64: thumbnailToSend,
+              description: description || '',
+            }
+          });
 
       } catch (error: any) {
-          console.error('Analysis error:', error);
-          let errorMessage = 'Failed to analyze. Please try again.';
-          if (error.response?.data?.detail) {
-            errorMessage = error.response.data.detail;
-          } else if (error.message) {
-            errorMessage = error.message;
-          }
+          console.error('Navigation error:', error);
+          Alert.alert('Error', 'Failed to start conversation. Please try again.');
+          setAnalyzing(false);
+      }
+  };
           Alert.alert('Analysis Failed', errorMessage);
       } finally {
           setAnalyzing(false);
