@@ -458,7 +458,8 @@ Make the instructions personalized based on the homeowner's skill level and situ
             MaterialTool(
                 name=m["name"],
                 category="material",
-                estimated_cost=m.get("estimated_cost", "varies")
+                estimated_cost=m.get("estimated_cost", "varies"),
+                home_depot_url=generate_home_depot_url(m["name"])
             )
             for m in analysis.get("materials", [])
         ]
@@ -467,7 +468,8 @@ Make the instructions personalized based on the homeowner's skill level and situ
             MaterialTool(
                 name=t["name"],
                 category="tool",
-                estimated_cost=t.get("estimated_cost", "varies")
+                estimated_cost=t.get("estimated_cost", "varies"),
+                home_depot_url=generate_home_depot_url(t["name"])
             )
             for t in analysis.get("tools", [])
         ]
