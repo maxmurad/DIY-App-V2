@@ -471,6 +471,9 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
   },
+  messagesWrapper: {
+    flex: 1,
+  },
   messagesList: {
     padding: 16,
     paddingBottom: 8,
