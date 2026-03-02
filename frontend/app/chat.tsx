@@ -281,21 +281,24 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Messages */}
+      {/* Messages with Keyboard Handling */}
       <KeyboardAvoidingView 
         style={styles.chatContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
-        <FlatList
-          ref={flatListRef}
-          data={conversation?.messages || []}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.messagesWrapper}>
+            <FlatList
+              ref={flatListRef}
+              data={conversation?.messages || []}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.messagesList}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              keyboardShouldPersistTaps="handled"
+            />
 
         {/* Typing Indicator */}
         {sending && (
