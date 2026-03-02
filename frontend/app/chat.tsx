@@ -151,7 +151,7 @@ export default function ChatScreen() {
         setTimeout(() => {
           router.replace({
             pathname: '/project',
-            params: { id: project_id }
+            params: { projectId: project_id }
           });
         }, 2000);
       }
