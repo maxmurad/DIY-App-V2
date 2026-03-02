@@ -435,7 +435,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 16,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   sectionHeader: {
