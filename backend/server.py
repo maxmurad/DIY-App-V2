@@ -63,7 +63,15 @@ class MaterialTool(BaseModel):
     name: str
     category: str  # "material" or "tool"
     estimated_cost: Optional[str] = None
+    home_depot_url: Optional[str] = None
     already_owned: bool = False
+
+
+def generate_home_depot_url(item_name: str) -> str:
+    """Generate a Home Depot search URL for a material or tool"""
+    from urllib.parse import quote_plus
+    search_term = quote_plus(item_name)
+    return f"https://www.homedepot.com/s/{search_term}"
 
 class InstructionStep(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
