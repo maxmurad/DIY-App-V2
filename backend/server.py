@@ -95,6 +95,41 @@ class Project(BaseModel):
 class ProjectResponse(BaseModel):
     project: Project
 
+# ============ Conversation Models (Handy Hank) ============
+
+class ChatMessage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    role: str  # "user" or "handy_hank"
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class Conversation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    image_base64: str
+    thumbnail_base64: Optional[str] = ""
+    initial_description: str = ""
+    messages: List[ChatMessage] = []
+    is_complete: bool = False  # True when Handy Hank has enough info
+    project_id: Optional[str] = None  # Linked project once created
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ConversationResponse(BaseModel):
+    conversation: Conversation
+
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    message: ChatMessage
+    is_complete: bool
+    project_id: Optional[str] = None
+
+class StartConversationRequest(BaseModel):
+    image_base64: str
+    thumbnail_base64: Optional[str] = ""
+    description: Optional[str] = ""
+
 class ProjectListResponse(BaseModel):
     projects: List[Project]
 
