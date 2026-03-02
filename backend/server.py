@@ -541,12 +541,13 @@ async def diagnose_repair(request: DiagnosisRequest):
         # Get AI analysis
         analysis = await analyze_repair_with_ai(request.image_base64, request.description or "")
 
-        # Create materials and tools lists with IDs
+        # Create materials and tools lists with IDs and Home Depot URLs
         materials = [
             MaterialTool(
                 name=m["name"],
                 category="material",
-                estimated_cost=m.get("estimated_cost", "varies")
+                estimated_cost=m.get("estimated_cost", "varies"),
+                home_depot_url=generate_home_depot_url(m["name"])
             )
             for m in analysis.get("materials", [])
         ]
@@ -555,7 +556,8 @@ async def diagnose_repair(request: DiagnosisRequest):
             MaterialTool(
                 name=t["name"],
                 category="tool",
-                estimated_cost=t.get("estimated_cost", "varies")
+                estimated_cost=t.get("estimated_cost", "varies"),
+                home_depot_url=generate_home_depot_url(t["name"])
             )
             for t in analysis.get("tools", [])
         ]
