@@ -438,11 +438,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  hdBadge: {
+    backgroundColor: '#FFF3E8',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F96302',
+  },
+  hdBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F96302',
+  },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 12,
     gap: 12,
+  },
+  itemCheckArea: {
+    paddingTop: 2,
   },
   itemContent: {
     flex: 1,
