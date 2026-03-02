@@ -756,6 +756,13 @@ async def get_project(project_id: str):
         project_data = await db.projects.find_one({"id": project_id})
         if not project_data:
             raise HTTPException(status_code=404, detail="Project not found")
+        # Backfill Home Depot URLs for existing projects
+        for item in project_data.get("materials", []):
+            if not item.get("home_depot_url"):
+                item["home_depot_url"] = generate_home_depot_url(item.get("name", ""))
+        for item in project_data.get("tools", []):
+            if not item.get("home_depot_url"):
+                item["home_depot_url"] = generate_home_depot_url(item.get("name", ""))
         project = Project(**project_data)
         return ProjectResponse(project=project)
     except HTTPException:
