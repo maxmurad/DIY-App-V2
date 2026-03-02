@@ -219,14 +219,14 @@ Provide a comprehensive analysis in the following JSON format:
   ],
   "materials": [
     {{
-      "name": "Material name",
-      "estimated_cost": "$X-Y or 'included' or 'varies'"
+      "name": "Material name (be specific with brand/type if applicable)",
+      "estimated_cost": "Current Home Depot price estimate, e.g. '$4.97' or '$12.98 - $18.97'"
     }}
   ],
   "tools": [
     {{
-      "name": "Tool name",
-      "estimated_cost": "$X-Y or 'common household item'"
+      "name": "Tool name (be specific with type/size)",
+      "estimated_cost": "Current Home Depot price estimate, e.g. '$9.97' or 'common household item'"
     }}
   ]
 }}
@@ -236,7 +236,8 @@ IMPORTANT:
 - Include conditional logic in steps (if/then scenarios)
 - Rate difficulty honestly based on the criteria
 - Include at least 5-10 detailed steps
-- List all materials and tools needed
+- List all materials and tools needed with SPECIFIC names suitable for searching on Home Depot
+- For estimated_cost, provide realistic current Home Depot retail pricing
 - Provide safety warnings for any risky steps
 - RETURN ONLY RAW JSON. Do not include markdown formatting like ```json ... ```"""
 
