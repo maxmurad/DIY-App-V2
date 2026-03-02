@@ -49,7 +49,7 @@ All critical systems are running and operational. The application has successful
 **Load Time:** < 4 seconds  
 **Status:** ✅ Operational
 
-**Preview URL:** https://fixmyhome-45.preview.emergentagent.com  
+**Preview URL:** https://home-fix-vision.preview.emergentagent.com  
 **Status:** ✅ Accessible
 
 ---
@@ -286,7 +286,7 @@ All critical systems are operational. The application has demonstrated full end-
 
 ## 📱 ACCESS INFORMATION
 
-**Preview URL:** https://fixmyhome-45.preview.emergentagent.com
+**Preview URL:** https://home-fix-vision.preview.emergentagent.com
 
 **Mobile Testing:**
 1. Download Expo Go app on iOS/Android
@@ -294,7 +294,7 @@ All critical systems are operational. The application has demonstrated full end-
 3. Grant camera permissions
 4. Test complete user flow
 
-**API Endpoint:** https://fixmyhome-45.preview.emergentagent.com/api/
+**API Endpoint:** https://home-fix-vision.preview.emergentagent.com/api/
 
 ---
 
