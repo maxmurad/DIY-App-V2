@@ -420,10 +420,10 @@ Provide a JSON response with this EXACT structure:
     "hardware_identified": "The specific hardware/fixture involved",
     "issue_type": "Category of repair",
     "materials": [
-        {{"name": "Material name", "estimated_cost": "$X-Y"}}
+        {{"name": "Material name (specific for Home Depot search)", "estimated_cost": "Current Home Depot price, e.g. '$4.97' or '$12.98 - $18.97'"}}
     ],
     "tools": [
-        {{"name": "Tool name", "estimated_cost": "$X-Y or 'likely owned'"}}
+        {{"name": "Tool name (specific for Home Depot search)", "estimated_cost": "Current Home Depot price, e.g. '$9.97' or 'likely owned'"}}
     ],
     "steps": [
         {{
