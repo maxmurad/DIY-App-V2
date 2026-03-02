@@ -323,6 +323,8 @@ export default function ChatScreen() {
             </Text>
           </View>
         )}
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Input Area */}
         {!conversation?.is_complete && (
