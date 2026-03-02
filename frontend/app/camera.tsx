@@ -282,7 +282,8 @@ export default function CameraScreen() {
                     <Text style={styles.retakeButtonText}>Retake</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.actionButton, styles.analyzeButton]} onPress={() => { Keyboard.dismiss(); uploadAndAnalyze(); }} disabled={analyzing}>
-                    {analyzing ? <ActivityIndicator color="#fff" /> : <><MaterialIcons name="auto-fix-high" size={24} color="#fff" /><Text style={styles.analyzeButtonText}>Analyze</Text></>}
+                    {analyzing ? <ActivityIndicator color="#fff" /> : <><MaterialIcons name="chat" size={24} color="#fff" /><Text style={styles.analyzeButtonText}>Chat with Hank</Text></>}
+                  </TouchableOpacity>
                   </TouchableOpacity>
                 </View>
               </View>
