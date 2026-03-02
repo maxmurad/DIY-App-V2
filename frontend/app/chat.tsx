@@ -181,7 +181,7 @@ export default function ChatScreen() {
       const project = response.data.project;
       router.replace({
         pathname: '/project',
-        params: { id: project.id }
+        params: { projectId: project.id }
       });
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to generate project');
