@@ -483,6 +483,26 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 2,
   },
+  itemPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 12,
+  },
+  hdLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3E8',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  hdLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F96302',
+  },
   stepContainer: {
       flexDirection: 'row',
   },
