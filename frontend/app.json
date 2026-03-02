@@ -57,7 +57,8 @@
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to select repair images."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
