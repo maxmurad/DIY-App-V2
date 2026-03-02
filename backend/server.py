@@ -793,6 +793,172 @@ async def delete_project(project_id: str):
         logger.error(f"Failed to delete project: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete project: {str(e)}")
 
+# ============ Handy Hank Conversation Routes ============
+
+@api_router.post("/conversations", response_model=ConversationResponse)
+async def start_conversation(request: StartConversationRequest):
+    """Start a new conversation with Handy Hank"""
+    try:
+        if not request.image_base64:
+            raise HTTPException(status_code=400, detail="Image is required")
+        
+        # Get Handy Hank's initial response
+        initial_response = await get_handy_hank_initial_response(
+            request.image_base64, 
+            request.description or ""
+        )
+        
+        # Create initial message from Handy Hank
+        hank_message = ChatMessage(
+            role="handy_hank",
+            content=initial_response
+        )
+        
+        # Create conversation
+        conversation = Conversation(
+            image_base64=request.image_base64,
+            thumbnail_base64=request.thumbnail_base64 or "",
+            initial_description=request.description or "",
+            messages=[hank_message]
+        )
+        
+        # Save to database
+        await db.conversations.insert_one(conversation.dict())
+        
+        logger.info(f"Started conversation: {conversation.id}")
+        return ConversationResponse(conversation=conversation)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to start conversation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start conversation: {str(e)}")
+
+@api_router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
+async def get_conversation(conversation_id: str):
+    """Get a conversation by ID"""
+    try:
+        conv_data = await db.conversations.find_one({"id": conversation_id})
+        if not conv_data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return ConversationResponse(conversation=Conversation(**conv_data))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch conversation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conversation: {str(e)}")
+
+@api_router.post("/conversations/{conversation_id}/chat", response_model=ChatResponse)
+async def send_chat_message(conversation_id: str, request: ChatRequest):
+    """Send a message in a conversation and get Handy Hank's response"""
+    try:
+        # Get conversation
+        conv_data = await db.conversations.find_one({"id": conversation_id})
+        if not conv_data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        conversation = Conversation(**conv_data)
+        
+        if conversation.is_complete:
+            raise HTTPException(status_code=400, detail="Conversation already complete")
+        
+        # Add user message
+        user_message = ChatMessage(
+            role="user",
+            content=request.message
+        )
+        conversation.messages.append(user_message)
+        
+        # Get Handy Hank's response
+        hank_response, is_complete = await get_handy_hank_response(conversation, request.message)
+        
+        hank_message = ChatMessage(
+            role="handy_hank",
+            content=hank_response
+        )
+        conversation.messages.append(hank_message)
+        
+        # Update conversation
+        conversation.is_complete = is_complete
+        conversation.updated_at = datetime.utcnow()
+        
+        project_id = None
+        
+        # If conversation is complete, create the project
+        if is_complete:
+            project = await create_project_from_conversation(conversation)
+            await db.projects.insert_one(project.dict())
+            project_id = project.id
+            conversation.project_id = project_id
+            logger.info(f"Created project {project_id} from conversation {conversation_id}")
+        
+        # Save updated conversation
+        await db.conversations.update_one(
+            {"id": conversation_id},
+            {"$set": conversation.dict()}
+        )
+        
+        return ChatResponse(
+            message=hank_message,
+            is_complete=is_complete,
+            project_id=project_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
+
+@api_router.post("/conversations/{conversation_id}/complete", response_model=ProjectResponse)
+async def complete_conversation(conversation_id: str):
+    """Force complete a conversation and generate the project"""
+    try:
+        conv_data = await db.conversations.find_one({"id": conversation_id})
+        if not conv_data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        conversation = Conversation(**conv_data)
+        
+        if conversation.project_id:
+            # Project already exists, fetch and return it
+            project_data = await db.projects.find_one({"id": conversation.project_id})
+            if project_data:
+                return ProjectResponse(project=Project(**project_data))
+        
+        # Create project from conversation
+        project = await create_project_from_conversation(conversation)
+        await db.projects.insert_one(project.dict())
+        
+        # Update conversation
+        conversation.is_complete = True
+        conversation.project_id = project.id
+        conversation.updated_at = datetime.utcnow()
+        
+        await db.conversations.update_one(
+            {"id": conversation_id},
+            {"$set": conversation.dict()}
+        )
+        
+        logger.info(f"Force completed conversation {conversation_id}, created project {project.id}")
+        return ProjectResponse(project=project)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Complete conversation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to complete conversation: {str(e)}")
+
+@api_router.get("/conversations", response_model=List[Conversation])
+async def get_conversations():
+    """Get all conversations"""
+    try:
+        conversations_data = await db.conversations.find({}).sort("created_at", -1).to_list(50)
+        return [Conversation(**conv) for conv in conversations_data]
+    except Exception as e:
+        logger.error(f"Failed to fetch conversations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conversations: {str(e)}")
+
 # ============ AI Image Generation (Imagen) ============
 
 async def analyze_image_for_context(image_base64: str) -> str:
