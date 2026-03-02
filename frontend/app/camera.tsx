@@ -227,11 +227,6 @@ export default function CameraScreen() {
           setAnalyzing(false);
       }
   };
-          Alert.alert('Analysis Failed', errorMessage);
-      } finally {
-          setAnalyzing(false);
-      }
-  };
 
   const retake = () => {
     setCapturedImage(null);
