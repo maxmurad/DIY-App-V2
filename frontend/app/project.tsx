@@ -14,6 +14,7 @@ interface MaterialTool {
   name: string;
   category: string;
   estimated_cost?: string;
+  home_depot_url?: string;
   already_owned: boolean;
 }
 
