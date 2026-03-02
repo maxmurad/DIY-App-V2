@@ -180,52 +180,87 @@ export default function ProjectScreen() {
 
         {/* Materials & Tools */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Materials</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Materials</Text>
+            <View style={styles.hdBadge}>
+              <Text style={styles.hdBadgeText}>Prices via Home Depot</Text>
+            </View>
+          </View>
           {project.materials.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.itemRow}
-              onPress={() => toggleItemOwnership(item.id, item.already_owned)}
-            >
-              <MaterialIcons
-                name={item.already_owned ? 'check-box' : 'check-box-outline-blank'}
-                size={24}
-                color={item.already_owned ? '#aaa' : HOUZZ_GREEN}
-              />
+            <View key={item.id} style={styles.itemRow}>
+              <TouchableOpacity
+                style={styles.itemCheckArea}
+                onPress={() => toggleItemOwnership(item.id, item.already_owned)}
+              >
+                <MaterialIcons
+                  name={item.already_owned ? 'check-box' : 'check-box-outline-blank'}
+                  size={24}
+                  color={item.already_owned ? '#aaa' : HOUZZ_GREEN}
+                />
+              </TouchableOpacity>
               <View style={styles.itemContent}>
                 <Text style={[styles.itemName, item.already_owned && styles.itemNameOwned]}>
                   {item.name}
                 </Text>
-                {item.estimated_cost && (
-                  <Text style={styles.itemCost}>{item.estimated_cost}</Text>
-                )}
+                <View style={styles.itemPriceRow}>
+                  {item.estimated_cost && (
+                    <Text style={styles.itemCost}>{item.estimated_cost}</Text>
+                  )}
+                  {item.home_depot_url && !item.already_owned && (
+                    <TouchableOpacity
+                      style={styles.hdLink}
+                      onPress={() => openHomeDepot(item.home_depot_url!)}
+                      data-testid={`hd-link-material-${item.id}`}
+                    >
+                      <MaterialIcons name="shopping-cart" size={14} color="#F96302" />
+                      <Text style={styles.hdLinkText}>Home Depot</Text>
+                      <MaterialIcons name="open-in-new" size={12} color="#F96302" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tools</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Tools</Text>
+          </View>
           {project.tools.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.itemRow}
-              onPress={() => toggleItemOwnership(item.id, item.already_owned)}
-            >
-              <MaterialIcons
-                name={item.already_owned ? 'check-box' : 'check-box-outline-blank'}
-                size={24}
-                color={item.already_owned ? '#aaa' : HOUZZ_GREEN}
-              />
+            <View key={item.id} style={styles.itemRow}>
+              <TouchableOpacity
+                style={styles.itemCheckArea}
+                onPress={() => toggleItemOwnership(item.id, item.already_owned)}
+              >
+                <MaterialIcons
+                  name={item.already_owned ? 'check-box' : 'check-box-outline-blank'}
+                  size={24}
+                  color={item.already_owned ? '#aaa' : HOUZZ_GREEN}
+                />
+              </TouchableOpacity>
               <View style={styles.itemContent}>
                 <Text style={[styles.itemName, item.already_owned && styles.itemNameOwned]}>
                   {item.name}
                 </Text>
-                {item.estimated_cost && (
-                  <Text style={styles.itemCost}>{item.estimated_cost}</Text>
-                )}
+                <View style={styles.itemPriceRow}>
+                  {item.estimated_cost && (
+                    <Text style={styles.itemCost}>{item.estimated_cost}</Text>
+                  )}
+                  {item.home_depot_url && !item.already_owned && (
+                    <TouchableOpacity
+                      style={styles.hdLink}
+                      onPress={() => openHomeDepot(item.home_depot_url!)}
+                      data-testid={`hd-link-tool-${item.id}`}
+                    >
+                      <MaterialIcons name="shopping-cart" size={14} color="#F96302" />
+                      <Text style={styles.hdLinkText}>Home Depot</Text>
+                      <MaterialIcons name="open-in-new" size={12} color="#F96302" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 
