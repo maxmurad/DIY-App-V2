@@ -679,11 +679,11 @@ async def diagnose_upload(
 
         # Create materials/tools/steps
         materials = [
-            MaterialTool(name=m["name"], category="material", estimated_cost=m.get("estimated_cost", "varies"))
+            MaterialTool(name=m["name"], category="material", estimated_cost=m.get("estimated_cost", "varies"), home_depot_url=generate_home_depot_url(m["name"]))
             for m in analysis.get("materials", [])
         ]
         tools = [
-            MaterialTool(name=t["name"], category="tool", estimated_cost=t.get("estimated_cost", "varies"))
+            MaterialTool(name=t["name"], category="tool", estimated_cost=t.get("estimated_cost", "varies"), home_depot_url=generate_home_depot_url(t["name"]))
             for t in analysis.get("tools", [])
         ]
         steps = [
