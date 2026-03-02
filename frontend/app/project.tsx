@@ -107,6 +107,12 @@ export default function ProjectScreen() {
     });
   };
 
+  const openHomeDepot = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Could not open Home Depot link');
+    });
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
