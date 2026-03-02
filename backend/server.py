@@ -261,6 +261,255 @@ IMPORTANT:
         raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 
+# ============ Handy Hank AI Functions ============
+
+HANDY_HANK_SYSTEM_PROMPT = """You are Handy Hank, a friendly and experienced handyman with 30+ years of experience in home repairs. You have a warm, approachable personality and love helping homeowners tackle DIY projects.
+
+Your communication style:
+- Friendly and encouraging, like a helpful neighbor
+- Use casual but professional language
+- Occasionally use phrases like "Well, let me take a look here..." or "I've seen this before!"
+- Be patient and thorough in your questioning
+- Show genuine interest in helping
+
+Your role in this conversation:
+1. You've just received a photo/video of a home repair issue
+2. Ask clarifying questions to fully understand the problem
+3. Questions should cover: the specific issue, how long it's been happening, any previous repair attempts, the homeowner's skill level, and available tools
+4. Be thorough - ask as many questions as needed to provide the best solution
+5. When you have enough information, respond with EXACTLY: "[READY_TO_DIAGNOSE]" followed by a brief summary of what you've learned
+
+Important rules:
+- Only ask 1-2 questions at a time to keep the conversation natural
+- Acknowledge the user's answers before asking follow-ups
+- If the user seems frustrated or wants to skip ahead, accommodate them
+- Always be encouraging about their ability to fix the issue
+
+Remember: You're building rapport while gathering the information needed to provide a tailored repair plan."""
+
+async def get_handy_hank_response(conversation: Conversation, user_message: str) -> tuple[str, bool]:
+    """Get Handy Hank's response to a user message"""
+    try:
+        if not client_genai:
+            return "Sorry partner, I'm having some technical difficulties. Let me get back to you!", False
+        
+        # Build conversation history for context
+        messages = []
+        
+        # Add the image context
+        image_data = conversation.image_base64
+        if "base64," in image_data:
+            image_data = image_data.split("base64,")[1]
+        
+        image_part = types.Part.from_bytes(
+            data=base64.b64decode(image_data),
+            mime_type="image/jpeg"
+        )
+        
+        # Build the conversation context
+        conversation_history = ""
+        for msg in conversation.messages:
+            role_name = "Homeowner" if msg.role == "user" else "Handy Hank"
+            conversation_history += f"{role_name}: {msg.content}\n"
+        
+        # Add the new user message
+        conversation_history += f"Homeowner: {user_message}\n"
+        
+        # Create the prompt
+        prompt = f"""{HANDY_HANK_SYSTEM_PROMPT}
+
+The homeowner initially described their issue as: "{conversation.initial_description}"
+
+Here's our conversation so far:
+{conversation_history}
+
+Now respond as Handy Hank. Remember to ask clarifying questions until you have enough information, then include [READY_TO_DIAGNOSE] when ready."""
+
+        response = client_genai.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=[image_part, prompt]
+        )
+        
+        response_text = response.text.strip()
+        is_complete = "[READY_TO_DIAGNOSE]" in response_text
+        
+        # Clean up the response if it contains the marker
+        if is_complete:
+            response_text = response_text.replace("[READY_TO_DIAGNOSE]", "").strip()
+            # Add a friendly closing
+            if not any(phrase in response_text.lower() for phrase in ["let me put together", "i'll create", "let me create"]):
+                response_text += "\n\nAlright, I've got everything I need! Let me put together a detailed repair plan for you. Give me just a moment..."
+        
+        return response_text, is_complete
+        
+    except Exception as e:
+        logger.error(f"Handy Hank AI error: {str(e)}")
+        return "Well shucks, I'm having a bit of trouble here. Mind trying that again?", False
+
+async def get_handy_hank_initial_response(image_base64: str, description: str) -> str:
+    """Get Handy Hank's initial response after seeing the image"""
+    try:
+        if not client_genai:
+            return "Hey there! I'm Handy Hank. I'd love to help you out, but I'm having some technical issues. Try again in a moment!"
+        
+        image_data = image_base64
+        if "base64," in image_data:
+            image_data = image_data.split("base64,")[1]
+        
+        image_part = types.Part.from_bytes(
+            data=base64.b64decode(image_data),
+            mime_type="image/jpeg"
+        )
+        
+        prompt = f"""{HANDY_HANK_SYSTEM_PROMPT}
+
+The homeowner just sent you this image with the description: "{description if description else 'No description provided'}"
+
+This is your FIRST message to them. Introduce yourself briefly, acknowledge what you see in the image, and start asking your clarifying questions. Remember to be friendly and only ask 1-2 questions to start."""
+
+        response = client_genai.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=[image_part, prompt]
+        )
+        
+        return response.text.strip()
+        
+    except Exception as e:
+        logger.error(f"Handy Hank initial response error: {str(e)}")
+        return "Hey there, I'm Handy Hank! 👋 I can see you've got something that needs fixing. Tell me a bit more about what's going on - how long has this been an issue?"
+
+async def create_project_from_conversation(conversation: Conversation) -> Project:
+    """Create a detailed project based on the conversation with Handy Hank"""
+    try:
+        # Build conversation summary
+        conversation_text = f"Initial description: {conversation.initial_description}\n\n"
+        for msg in conversation.messages:
+            role_name = "Homeowner" if msg.role == "user" else "Handy Hank"
+            conversation_text += f"{role_name}: {msg.content}\n"
+        
+        image_data = conversation.image_base64
+        if "base64," in image_data:
+            image_data = image_data.split("base64,")[1]
+        
+        image_part = types.Part.from_bytes(
+            data=base64.b64decode(image_data),
+            mime_type="image/jpeg"
+        )
+        
+        prompt = f"""Based on this image and the following conversation between Handy Hank and a homeowner, create a detailed, personalized repair project plan.
+
+CONVERSATION:
+{conversation_text}
+
+Provide a JSON response with this EXACT structure:
+{{
+    "title": "Clear, specific title for this repair project",
+    "description": "Detailed description of the issue and the planned solution, personalized based on the conversation",
+    "skill_level": 1-4 (based on what the homeowner shared about their experience),
+    "estimated_time": "Realistic time estimate",
+    "hardware_identified": "The specific hardware/fixture involved",
+    "issue_type": "Category of repair",
+    "materials": [
+        {{"name": "Material name", "estimated_cost": "$X-Y"}}
+    ],
+    "tools": [
+        {{"name": "Tool name", "estimated_cost": "$X-Y or 'likely owned'"}}
+    ],
+    "steps": [
+        {{
+            "step_number": 1,
+            "title": "Step title",
+            "description": "Detailed instructions written in Handy Hank's friendly voice",
+            "warning": "Safety warning if applicable",
+            "image_hint": "What to look for visually"
+        }}
+    ],
+    "safety_warnings": ["List of important safety considerations"]
+}}
+
+Make the instructions personalized based on the homeowner's skill level and situation discussed in the conversation. Write in Handy Hank's friendly, encouraging voice."""
+
+        response = client_genai.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=[image_part, prompt]
+        )
+        
+        # Parse JSON response
+        response_text = response.text.strip()
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0]
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0]
+        
+        analysis = json.loads(response_text)
+        
+        # Create the project
+        materials = [
+            MaterialTool(
+                name=m["name"],
+                category="material",
+                estimated_cost=m.get("estimated_cost", "varies")
+            )
+            for m in analysis.get("materials", [])
+        ]
+        
+        tools = [
+            MaterialTool(
+                name=t["name"],
+                category="tool",
+                estimated_cost=t.get("estimated_cost", "varies")
+            )
+            for t in analysis.get("tools", [])
+        ]
+        
+        steps = [
+            InstructionStep(
+                step_number=s["step_number"],
+                title=s["title"],
+                description=s["description"],
+                warning=s.get("warning"),
+                image_hint=s.get("image_hint")
+            )
+            for s in analysis.get("steps", [])
+        ]
+        
+        # Create thumbnail
+        thumbnail_base64 = conversation.thumbnail_base64 or ""
+        if not thumbnail_base64 and conversation.image_base64:
+            try:
+                img_bytes = base64.b64decode(image_data)
+                img = Image.open(io.BytesIO(img_bytes))
+                img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                buffered = io.BytesIO()
+                img.save(buffered, format="JPEG", quality=70)
+                thumbnail_base64 = f"data:image/jpeg;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"
+            except:
+                thumbnail_base64 = conversation.image_base64
+        
+        skill_level = analysis.get("skill_level", 2)
+        project = Project(
+            title=analysis.get("title", "Home Repair Project"),
+            description=analysis.get("description", ""),
+            skill_level=skill_level,
+            skill_level_name=get_skill_level_name(skill_level),
+            estimated_time=analysis.get("estimated_time", "1-2 hours"),
+            image_base64=conversation.image_base64,
+            thumbnail_base64=thumbnail_base64,
+            hardware_identified=analysis.get("hardware_identified", "Unknown"),
+            issue_type=analysis.get("issue_type", "General repair"),
+            steps=steps,
+            materials=materials,
+            tools=tools,
+            safety_warnings=analysis.get("safety_warnings", [])
+        )
+        
+        return project
+        
+    except Exception as e:
+        logger.error(f"Create project from conversation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create project: {str(e)}")
+
+
 # ============ API Routes ============
 
 @app.get("/")
